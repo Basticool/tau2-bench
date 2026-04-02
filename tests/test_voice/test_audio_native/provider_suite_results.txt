@@ -1,0 +1,82 @@
+Provider Suite — 2026-04-02 14:53 
+
+[deepgram]
+  ⏭️ SKIP  test_connect_disconnect
+  ⏭️ SKIP  test_reconnect_after_disconnect
+  ⏭️ SKIP  test_single_turn_reply[short-720ms]
+  ⏭️ SKIP  test_single_turn_reply[medium-1120ms]
+  ⏭️ SKIP  test_multi_turn_reply
+  ⏭️ SKIP  test_tool_call_round_trip
+  ⏭️ SKIP  test_barge_in[medium-1120ms]
+  ⏭️ SKIP  test_barge_in[short-720ms]
+
+[gemini]
+  ✅ PASS  test_connect_disconnect
+  ❌ FAIL  test_reconnect_after_disconnect
+  ✅ PASS  test_single_turn_reply[short-720ms]
+  ✅ PASS  test_single_turn_reply[medium-1120ms]
+  ✅ PASS  test_multi_turn_reply
+  ✅ PASS  test_tool_call_round_trip
+  ✅ PASS  test_barge_in[short-720ms]
+  ✅ PASS  test_barge_in[medium-1120ms]
+
+[livekit]
+  ⏭️ SKIP  test_connect_disconnect
+  ⏭️ SKIP  test_reconnect_after_disconnect
+  ⏭️ SKIP  test_single_turn_reply[short-720ms]
+  ⏭️ SKIP  test_single_turn_reply[medium-1120ms]
+  ⏭️ SKIP  test_multi_turn_reply
+  ⏭️ SKIP  test_tool_call_round_trip
+  ⏭️ SKIP  test_barge_in[medium-1120ms]
+  ⏭️ SKIP  test_barge_in[short-720ms]
+
+[nova]
+  ⏭️ SKIP  test_connect_disconnect
+  ⏭️ SKIP  test_reconnect_after_disconnect
+  ⏭️ SKIP  test_single_turn_reply[short-720ms]
+  ⏭️ SKIP  test_single_turn_reply[medium-1120ms]
+  ⏭️ SKIP  test_multi_turn_reply
+  ⏭️ SKIP  test_tool_call_round_trip
+  ⏭️ SKIP  test_barge_in[short-720ms]
+  ⏭️ SKIP  test_barge_in[medium-1120ms]
+
+[openai]
+  ✅ PASS  test_connect_disconnect
+  ✅ PASS  test_reconnect_after_disconnect
+  ✅ PASS  test_single_turn_reply[short-720ms]
+  ✅ PASS  test_single_turn_reply[medium-1120ms]
+  ✅ PASS  test_multi_turn_reply
+  ✅ PASS  test_tool_call_round_trip
+  ✅ PASS  test_barge_in[short-720ms]
+  ✅ PASS  test_barge_in[medium-1120ms]
+
+[qwen]
+  ✅ PASS  test_connect_disconnect
+  ✅ PASS  test_reconnect_after_disconnect
+  ✅ PASS  test_single_turn_reply[short-720ms]
+  ✅ PASS  test_single_turn_reply[medium-1120ms]
+  ✅ PASS  test_multi_turn_reply
+  ❌ FAIL  test_tool_call_round_trip
+  ✅ PASS  test_barge_in[medium-1120ms]
+  ✅ PASS  test_barge_in[short-720ms]
+
+[xai]
+  ✅ PASS  test_connect_disconnect
+  ✅ PASS  test_reconnect_after_disconnect
+  ❌ FAIL  test_single_turn_reply[short-720ms]
+  ✅ PASS  test_single_turn_reply[medium-1120ms]
+  ✅ PASS  test_multi_turn_reply
+  ✅ PASS  test_tool_call_round_trip
+  ❌ FAIL  test_barge_in[short-720ms]
+  ✅ PASS  test_barge_in[medium-1120ms]
+
+Failure details:
+  test_reconnect_after_disconnect: RuntimeError: Failed to connect to Gemini Live API: Failed to connect to Gemini Live API: File /var/folders/gq/cl9znhtx2dl49rgb8h9pq49m0000gn/T/tmp3psy217l.json was not found.
+  test_tool_call_round_trip: RuntimeError: Failed to connect to Qwen API: QWEN REALTIME API LIMITATION: 1 tools configured but tool/function calling does NOT work with qwen3-omni-flash-realtime. The model accepts tool configurations but NEVER invokes them - it generates audio responses instead.
+  test_single_turn_reply[short-720ms]: AssertionError: Agent did not produce audio within 75 ticks (15000ms) for hello.wav
+assert False
+  test_barge_in[short-720ms]: AssertionError: Agent never started speaking for hello.wav
+assert False
+ +  where False = any(<generator object TestBargeIn.test_barge_in.<locals>.<genexpr> at 0x11e757780>)
+
+28 passed, 4 failed, 24 skipped, 0 errors in 58s
