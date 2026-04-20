@@ -3,10 +3,10 @@
 ```mermaid
 flowchart TD
     A([For each task]) --> B[Get expected actions]
-    B --> C{Norm exists\nfor an action?}
+    B --> C{Norm exists\nfor one of those actions?}
     C -- No --> D([Skip])
-    C -- Yes --> E[Pick one norm\nat random]
-    E --> F[Replace policy quote\nwith violation override]
+    C -- Yes --> E[Pick one of those norms\nat random]
+    E --> F[Replace policy quote\nwith policy violation override]
     F --> G[Run simulation]
     G --> H([Save trace +\nviolated norm label])
 ```
