@@ -1,3 +1,66 @@
+# Non-Compliant Trace Generation
+
+```mermaid
+flowchart TD
+    A([For each task]) --> B[Get expected actions]
+    B --> C{Norm exists\nfor an action?}
+    C -- No --> D([Skip])
+    C -- Yes --> E[Pick one norm\nat random]
+    E --> F[Replace policy quote\nwith violation override]
+    F --> G[Run simulation]
+    G --> H([Save trace +\nviolated norm label])
+```
+
+For each task, the pipeline looks at which agent tool calls are expected, finds norms in the domain norms file whose `constrained_actions` match, randomly picks one to violate, and patches the agent's policy — replacing the norm's `policy_quote` with its `policy_violation` sentence (same text, plus an explicit "Except for [action]: do not comply" override). The simulation runs normally and the result is saved in the standard trajectories format with an added `violated_norm` field.
+
+Each domain norms file (e.g. `norms_and_propositions/retail_norms.json`) must define for each norm:
+- `constrained_actions` — tool call names the norm gates
+- `policy_quote` — verbatim substring of the domain policy
+- `policy_violation` — the override sentence injected into the agent's policy
+
+### Generate traces
+
+```bash
+uv run python scripts/generate_non_compliant_traces.py \
+    --domain retail \
+    --norms  norms_and_propositions/retail_norms.json \
+    --agent-llm openai/gpt-4.1 \
+    --user-llm  openai/gpt-4.1-mini \
+    --output results/non_compliant_retail.json
+```
+
+| Flag | Description |
+|------|-------------|
+| `--domain` | tau2 domain name (`retail`, `airline`, `telecom`, …) |
+| `--norms` | Path to the domain norms JSON file |
+| `--agent-llm` | LLM for the agent |
+| `--user-llm` | LLM for the user simulator |
+| `--output` | Output file path |
+| `--task-ids` | Subset of task IDs (omit to run all) |
+| `--seed` | Random seed for norm selection (default: 42) |
+
+### Visualize traces
+
+```bash
+uv run --with flask python scripts/view_non_compliant.py \
+    --data  results/non_compliant_retail.json \
+    --norms norms_and_propositions/retail_norms.json
+```
+
+Then open `http://localhost:5010`. Use `←` / `→` (or `p` / `n`) to navigate. Filter by violated norm using the chip bar at the top.
+
+| Flag | Description |
+|------|-------------|
+| `--data` | Path to the generated traces JSON |
+| `--norms` | Norms file (adds descriptions and policy text to the UI) |
+| `--norm` | Filter to a specific norm ID |
+| `--failed-only` | Show only traces where the agent failed (reward = 0) |
+| `--port` | Port (default: 5010) |
+
+---
+
+# ===== OLD README =====
+
 # $\tau$-Bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains
 
 [![python](https://img.shields.io/badge/Python-3.12%2B-blue.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)

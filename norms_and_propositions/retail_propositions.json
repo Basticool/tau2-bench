@@ -1,0 +1,107 @@
+{
+  "find_user_id_by_email": {
+    "description": "Agent called the find_user_id_by_email tool to locate a user account by email address.",
+    "examples": [],
+    "additional_context": "Tool-call AP: true at the turn the agent invokes find_user_id_by_email. Groundable mechanically from tool call logs without LLM grounding."
+  },
+  "find_user_id_by_name_zip": {
+    "description": "Agent called the find_user_id_by_name_zip tool to locate a user account by name and zip code.",
+    "examples": [],
+    "additional_context": "Tool-call AP: true at the turn the agent invokes find_user_id_by_name_zip. Groundable mechanically from tool call logs without LLM grounding."
+  },
+  "get_user_details": {
+    "description": "Agent called the get_user_details tool to retrieve a user's account information.",
+    "examples": [],
+    "additional_context": "Tool-call AP: true at the turn the agent invokes get_user_details. Groundable mechanically from tool call logs without LLM grounding."
+  },
+  "get_order_details": {
+    "description": "Agent called the get_order_details tool to retrieve details and status of an order.",
+    "examples": [],
+    "additional_context": "Tool-call AP: true at the turn the agent invokes get_order_details. Groundable mechanically from tool call logs without LLM grounding."
+  },
+  "cancel_pending_order": {
+    "description": "Agent called the cancel_pending_order tool to cancel a pending order.",
+    "examples": [],
+    "additional_context": "Tool-call AP: true at the turn the agent invokes cancel_pending_order. Groundable mechanically from tool call logs without LLM grounding."
+  },
+  "modify_pending_order_items": {
+    "description": "Agent called the modify_pending_order_items tool to change item options on a pending order.",
+    "examples": [],
+    "additional_context": "Tool-call AP: true at the turn the agent invokes modify_pending_order_items. Groundable mechanically from tool call logs without LLM grounding."
+  },
+  "modify_pending_order_payment": {
+    "description": "Agent called the modify_pending_order_payment tool to change the payment method on a pending order.",
+    "examples": [],
+    "additional_context": "Tool-call AP: true at the turn the agent invokes modify_pending_order_payment. Groundable mechanically from tool call logs without LLM grounding."
+  },
+  "modify_pending_order_address": {
+    "description": "Agent called the modify_pending_order_address tool to change the shipping address on a pending order.",
+    "examples": [],
+    "additional_context": "Tool-call AP: true at the turn the agent invokes modify_pending_order_address. Groundable mechanically from tool call logs without LLM grounding."
+  },
+  "return_delivered_order_items": {
+    "description": "Agent called the return_delivered_order_items tool to initiate a return on a delivered order.",
+    "examples": [],
+    "additional_context": "Tool-call AP: true at the turn the agent invokes return_delivered_order_items. Groundable mechanically from tool call logs without LLM grounding."
+  },
+  "exchange_delivered_order_items": {
+    "description": "Agent called the exchange_delivered_order_items tool to exchange items from a delivered order.",
+    "examples": [],
+    "additional_context": "Tool-call AP: true at the turn the agent invokes exchange_delivered_order_items. Groundable mechanically from tool call logs without LLM grounding."
+  },
+  "modify_user_address": {
+    "description": "Agent called the modify_user_address tool to update the user's default address.",
+    "examples": [],
+    "additional_context": "Tool-call AP: true at the turn the agent invokes modify_user_address. Groundable mechanically from tool call logs without LLM grounding."
+  },
+  "transfer_to_human_agents": {
+    "description": "Agent called the transfer_to_human_agents tool to escalate the conversation to a human agent.",
+    "examples": [],
+    "additional_context": "Tool-call AP: true at the turn the agent invokes transfer_to_human_agents. Groundable mechanically from tool call logs without LLM grounding."
+  },
+  "user_confirmed": {
+    "description": "The user gave explicit confirmation (e.g. 'yes', 'go ahead', 'confirmed') to proceed with an action the agent described.",
+    "examples": [],
+    "additional_context": "Content AP: requires LLM grounding. True at the user turn where the user affirmatively approves the agent's stated action. Distinct from general agreement or acknowledgement — must be in response to an explicit action proposal by the agent. Grounding examples deferred (see ISSUE-002)."
+  },
+  "action_details_listed": {
+    "description": "The agent explicitly listed the full details of a pending action before asking for user confirmation.",
+    "examples": [],
+    "additional_context": "Content AP: requires LLM grounding. True at the agent turn where action details (order ID, items, payment method, reason, etc.) are presented to the user prior to execution. Grounding examples deferred (see ISSUE-002)."
+  },
+  "valid_cancel_reason": {
+    "description": "The cancellation reason provided for a cancel_pending_order call is exactly 'no longer needed' or 'ordered by mistake'.",
+    "examples": [],
+    "additional_context": "Content AP: groundable from the 'reason' argument of the cancel_pending_order tool call. True when reason is one of the two policy-approved values. Co-occurs with cancel_pending_order at the same turn."
+  },
+  "order_is_pending": {
+    "description": "The most recently retrieved order has status 'pending'.",
+    "examples": [],
+    "additional_context": "Content AP: groundable from the result of the most recent get_order_details tool call. True at the turn following get_order_details if the returned order status is 'pending'. Grounding examples deferred (see ISSUE-002)."
+  },
+  "order_is_delivered": {
+    "description": "The most recently retrieved order has status 'delivered'.",
+    "examples": [],
+    "additional_context": "Content AP: groundable from the result of the most recent get_order_details tool call. True at the turn following get_order_details if the returned order status is 'delivered'. Grounding examples deferred (see ISSUE-002)."
+  },
+  "refund_to_original_or_gift_card": {
+    "description": "The payment method specified for a return refund is either the original payment method used for the order or an existing gift card.",
+    "examples": [],
+    "additional_context": "Content AP: groundable from the payment_method_id argument of the return_delivered_order_items tool call cross-referenced against the order's payment history. Co-occurs with return_delivered_order_items at the same turn. Grounding examples deferred (see ISSUE-002)."
+  },
+  "gift_card_balance_sufficient": {
+    "description": "The gift card specified as the payment method has sufficient balance to cover the required amount (order total, price difference, or refund amount).",
+    "examples": [],
+    "additional_context": "Content AP: hard to ground — requires comparing gift card balance (from get_user_details result) against order amount. Included for completeness; grounding examples deferred (see ISSUE-002)."
+  },
+  "same_product_type": {
+    "description": "The new item specified in a modify or exchange action is a variant of the same product type as the original item (e.g. shirt to shirt, not shirt to shoe).",
+    "examples": [],
+    "additional_context": "Content AP: groundable from the item_ids and new_item_ids arguments of modify_pending_order_items or exchange_delivered_order_items, cross-referenced against product details. Co-occurs with the mutation tool call at the same turn. Grounding examples deferred (see ISSUE-002)."
+  },
+  "single_user_session": {
+    "description": "All account lookup and access operations in this conversation target exactly one authenticated user.",
+    "examples": [],
+    "additional_context": "Content AP: hard to ground — requires session-level tracking across multiple turns to detect if a second user's identity is introduced. Included for completeness; grounding examples deferred (see ISSUE-002)."
+  }
+}
