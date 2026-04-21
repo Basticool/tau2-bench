@@ -16,7 +16,7 @@
   },
   "n2_confirm_before_cancel": {
     "precondition": "true",
-    "obligation": "!cancel_pending_order U (user_confirmed | G!cancel_pending_order)",
+    "obligation": "!cancel_pending_order U (F(list_cancel_details & F(user_confirmed)) | G!cancel_pending_order)",
     "obligation_type": "maintenance",
     "reparative": "n2r_transfer_after_unconfirmed_mutation",
     "metadata": {

@@ -21,6 +21,7 @@ Each domain norms file (e.g. `norms_and_propositions/retail_norms.json`) must de
 ### Generate traces
 
 ```bash
+uv sync
 uv run python scripts/generate_non_compliant_traces.py \
     --domain retail \
     --norms  norms_and_propositions/retail_norms.json \
