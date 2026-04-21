@@ -1,29 +1,48 @@
 #!/usr/bin/env python3
 """
-Generate non-compliant agent traces for any tau2 domain.
+Generate non-compliant traces for any tau2 domain.
 
-For each task:
-1. Find which primary norms are applicable based on the expected agent tool calls,
-   using the `constrained_actions` field in the norms file.
-2. Randomly select one norm to violate.
-3. Modify the domain policy by replacing the norm's `policy_quote` with its
-   `policy_violation` sentence.
-4. Run the simulation with the modified policy.
-5. Save results in the same format as standard trajectories, with a `violated_norm`
-   field added to each simulation entry.
+For each task, ALL applicable (norm, violation_type) pairs are discovered and a
+separate simulation is run for each — producing an exhaustive violation dataset
+rather than a single randomly chosen violation per task.
 
-A norm is considered "primary" (eligible for selection) when its metadata contains
-both `policy_quote` and `policy_violation`. Reparative norms and any norm missing
-those fields are automatically excluded.
+Three violation types are supported:
 
-Tasks with no applicable primary norms are skipped with a warning.
+  policy_violation      — replaces a sentence in the *agent* policy so a
+                          policy-following agent will misbehave.
+  user_policy_violation — appends adversarial instructions to the *user*
+                          simulator so the user provokes the violation.
+  env_modification      — mutates the environment database before the simulation
+                          so the world state makes the norm impossible to satisfy.
 
-Convention for norms files
---------------------------
-Each norm entry must have, inside `metadata`:
-  - constrained_actions : list[str]   — tool-call names the norm gates
-  - policy_quote        : str         — verbatim substring of the domain policy
-  - policy_violation    : str         — replacement sentence that induces non-compliance
+Norm applicability
+------------------
+A norm contributes violations to a task when:
+- its metadata has ``"always_applicable": true``  (e.g. single-user norm), OR
+- any of its ``constrained_actions`` appears in the task's expected agent calls.
+
+For each applicable norm every violation type present in its metadata is run.
+
+Convention for norm files
+-------------------------
+Each primary norm entry must have, inside ``metadata``:
+
+  constrained_actions    : list[str]  — tool-call names the norm gates
+  always_applicable      : bool       — (optional) include for every task
+
+Plus one or more of:
+
+  policy_quote           : str        — verbatim substring of the domain policy
+  policy_violation       : str        — replacement text for agent non-compliance
+  user_policy_violation  : str        — text appended to user simulator instructions
+  env_modification       : dict       — structured DB mutation spec (see below)
+
+env_modification spec
+---------------------
+  collection        : str   — top-level DB attribute (e.g. "orders", "users")
+  set               : dict  — {field: value} pairs to assign on matching items
+  nested_collection : str   — (optional) sub-attribute to descend into per item
+  filter_by         : dict  — (optional) {field: value} filter for nested items
 
 Usage
 -----
@@ -36,12 +55,12 @@ Usage
 
     # Run on a subset of tasks
     python scripts/generate_non_compliant_traces.py \\
-        --domain airline \\
-        --norms  norms_and_propositions/airline_norms.json \\
+        --domain retail \\
+        --norms  norms_and_propositions/retail_norms.json \\
         --agent-llm openai/gpt-4.1 \\
         --user-llm  openai/gpt-4.1-mini \\
         --task-ids 0 1 5 \\
-        --output results/non_compliant_airline_subset.json
+        --output results/non_compliant_retail_subset.json
 """
 
 import argparse
@@ -49,7 +68,6 @@ import json
 import random
 import subprocess
 import uuid
-from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -58,9 +76,11 @@ from loguru import logger
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
+VIOLATION_TYPES = ("policy_violation", "user_policy_violation", "env_modification")
+
 
 # ---------------------------------------------------------------------------
-# Norm loading and index building
+# Norm loading
 # ---------------------------------------------------------------------------
 
 
@@ -69,52 +89,60 @@ def load_norms(norms_path: Path) -> dict:
         return json.load(f)
 
 
-def build_tool_to_norms(norms: dict) -> dict[str, list[str]]:
-    """
-    Build a mapping from tool-call name → list of applicable primary norm IDs.
+# ---------------------------------------------------------------------------
+# Violation discovery
+# ---------------------------------------------------------------------------
 
-    A norm is primary if its metadata contains both `policy_quote` and
-    `policy_violation` (reparative norms and stubs are excluded).
-    The mapping key is each action listed in the norm's `constrained_actions`.
+
+def get_applicable_violations(task, norms: dict) -> list[tuple[str, str]]:
     """
-    index: dict[str, list[str]] = defaultdict(list)
+    Return all (norm_id, violation_type) pairs applicable to this task.
+
+    A norm is applicable when:
+    - its metadata has ``'always_applicable': True``, OR
+    - any of its ``constrained_actions`` intersects the task's expected agent tools.
+
+    For each applicable norm, every violation type present in its metadata is included.
+    """
+    agent_tools: set[str] = set()
+    if task.evaluation_criteria is not None:
+        agent_tools = {
+            a.name
+            for a in (task.evaluation_criteria.actions or [])
+            if a.requestor == "assistant"
+        }
+
+    result: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+
     for norm_id, norm in norms.items():
         meta = norm.get("metadata", {})
-        if "policy_quote" not in meta or "policy_violation" not in meta:
+
+        available_vtypes = [vt for vt in VIOLATION_TYPES if vt in meta]
+        if not available_vtypes:
             continue
-        for action in meta.get("constrained_actions", []):
-            index[action].append(norm_id)
-    return dict(index)
+
+        always = meta.get("always_applicable", False)
+        if not always:
+            constrained = set(meta.get("constrained_actions", []))
+            if not constrained & agent_tools:
+                continue
+
+        for vtype in available_vtypes:
+            key = (norm_id, vtype)
+            if key not in seen:
+                seen.add(key)
+                result.append(key)
+
+    return result
 
 
 # ---------------------------------------------------------------------------
-# Per-task helpers
+# Violation application
 # ---------------------------------------------------------------------------
 
 
-def get_applicable_norms(task, tool_to_norms: dict[str, list[str]]) -> list[str]:
-    """
-    Return norm IDs whose constrained action appears in the task's expected
-    agent-side tool calls.
-    """
-    if task.evaluation_criteria is None:
-        return []
-    agent_tools = {
-        a.name
-        for a in (task.evaluation_criteria.actions or [])
-        if a.requestor == "assistant"
-    }
-    seen: set[str] = set()
-    applicable: list[str] = []
-    for tool_name in agent_tools:
-        for norm_id in tool_to_norms.get(tool_name, []):
-            if norm_id not in seen:
-                seen.add(norm_id)
-                applicable.append(norm_id)
-    return applicable
-
-
-def build_violated_policy(base_policy: str, norm: dict) -> str:
+def build_violated_agent_policy(base_policy: str, norm: dict) -> str:
     """
     Return a copy of base_policy with the norm's policy_quote replaced by its
     policy_violation sentence (first occurrence only).
@@ -127,6 +155,36 @@ def build_violated_policy(base_policy: str, norm: dict) -> str:
             f"policy_quote not found verbatim in domain policy.\n  Quote: {quote!r}"
         )
     return base_policy.replace(quote, violation, 1)
+
+
+def apply_env_modification(env, spec: dict) -> None:
+    """
+    Apply a structured mutation spec to env.tools.db.
+
+    Spec keys:
+      collection        : top-level DB attribute name
+      set               : {field: value} to assign on each matching item
+      nested_collection : (optional) attribute to descend into on each item
+      filter_by         : (optional) {field: value} filter for nested items
+    """
+    db = env.tools.db
+    collection = getattr(db, spec["collection"])
+    nested_key = spec.get("nested_collection")
+    filter_by = spec.get("filter_by", {})
+    set_fields = spec["set"]
+
+    for item in collection.values():
+        if nested_key:
+            nested = getattr(item, nested_key)
+            for nested_item in nested.values():
+                if all(
+                    getattr(nested_item, k, None) == v for k, v in filter_by.items()
+                ):
+                    for field, value in set_fields.items():
+                        setattr(nested_item, field, value)
+        else:
+            for field, value in set_fields.items():
+                setattr(item, field, value)
 
 
 # ---------------------------------------------------------------------------
@@ -170,21 +228,19 @@ def run_non_compliant_traces(
     rng = random.Random(seed)
 
     norms = load_norms(norms_path)
-    tool_to_norms = build_tool_to_norms(norms)
 
-    primary_count = sum(
-        1 for n in norms.values()
-        if "policy_quote" in n.get("metadata", {}) and "policy_violation" in n.get("metadata", {})
+    total_specs = sum(
+        sum(1 for vt in VIOLATION_TYPES if vt in n.get("metadata", {}))
+        for n in norms.values()
     )
     logger.info(
-        f"Loaded {len(norms)} norms ({primary_count} primary) from {norms_path.name}. "
-        f"Domain: {domain}."
+        f"Loaded {len(norms)} norms ({total_specs} violation specs across all types) "
+        f"from {norms_path.name}. Domain: {domain}."
     )
 
     tasks = get_tasks(domain, task_ids=task_ids)
     logger.info(f"Loaded {len(tasks)} tasks.")
 
-    # Read the base policy once via a probe environment
     _probe_env = build_environment(domain)
     base_policy = _probe_env.get_policy()
 
@@ -193,7 +249,6 @@ def run_non_compliant_traces(
 
     info_dict = {
         "git_commit": git_commit,
-        "num_trials": 1,
         "max_steps": max_steps,
         "max_errors": max_errors,
         "user_info": {
@@ -228,68 +283,106 @@ def run_non_compliant_traces(
     skipped = 0
 
     for task in tasks:
-        applicable = get_applicable_norms(task, tool_to_norms)
-        if not applicable:
-            agent_tool_names = [
-                a.name
-                for a in (task.evaluation_criteria.actions or [])
-                if a.requestor == "assistant"
-            ] if task.evaluation_criteria else []
+        violations = get_applicable_violations(task, norms)
+
+        if not violations:
+            agent_tool_names = (
+                [
+                    a.name
+                    for a in (task.evaluation_criteria.actions or [])
+                    if a.requestor == "assistant"
+                ]
+                if task.evaluation_criteria
+                else []
+            )
             logger.warning(
-                f"Task {task.id}: no applicable norms for expected agent actions "
+                f"Task {task.id}: no applicable violations for expected agent actions "
                 f"{agent_tool_names}. Skipping."
             )
             skipped += 1
             continue
 
-        norm_id = rng.choice(applicable)
-        norm = norms[norm_id]
-
-        try:
-            violated_policy = build_violated_policy(base_policy, norm)
-        except ValueError as e:
-            logger.error(f"Task {task.id}: could not build violated policy — {e}. Skipping.")
-            skipped += 1
-            continue
-
-        logger.info(f"Task {task.id}: violating norm '{norm_id}'.")
-
-        env = build_environment(domain)
-        env.policy = violated_policy  # patched so simulation.policy records it
-
-        agent = LLMAgent(
-            tools=env.get_tools(),
-            domain_policy=violated_policy,
-            llm=agent_llm,
-        )
-        user = build_user("user_simulator", env, task, llm=user_llm)
-        orchestrator = Orchestrator(
-            domain=domain,
-            agent=agent,
-            user=user,
-            environment=env,
-            task=task,
-            max_steps=max_steps,
-            max_errors=max_errors,
-            seed=rng.randint(0, 2**31),
-            simulation_id=str(uuid.uuid4()),
+        logger.info(
+            f"Task {task.id}: {len(violations)} violation(s) — "
+            + ", ".join(f"{nid}/{vt}" for nid, vt in violations)
         )
 
-        try:
-            result = run_simulation(orchestrator)
-        except Exception as e:
-            logger.error(f"Task {task.id}: simulation failed — {e}. Skipping.")
-            skipped += 1
-            continue
+        for norm_id, violation_type in violations:
+            norm = norms[norm_id]
+            meta = norm["metadata"]
 
-        sim_dict = result.model_dump(mode="json")
-        sim_dict["violated_norm"] = norm_id
+            env = build_environment(domain)
 
-        serialised_simulations.append(sim_dict)
-        serialised_tasks.append(task.model_dump(mode="json"))
+            # --- apply the chosen violation ---
+            if violation_type == "policy_violation":
+                try:
+                    agent_policy = build_violated_agent_policy(base_policy, norm)
+                except ValueError as e:
+                    logger.error(
+                        f"Task {task.id} / {norm_id} / {violation_type}: "
+                        f"could not build violated policy — {e}. Skipping."
+                    )
+                    skipped += 1
+                    continue
+                env.policy = agent_policy
+            else:
+                agent_policy = base_policy
 
-        reward = result.reward_info.reward if result.reward_info else "N/A"
-        logger.info(f"Task {task.id}: done. reward={reward}, violated_norm={norm_id}.")
+            if violation_type == "env_modification":
+                apply_env_modification(env, meta["env_modification"])
+
+            # --- build participants ---
+            agent = LLMAgent(
+                tools=env.get_tools(),
+                domain_policy=agent_policy,
+                llm=agent_llm,
+            )
+            user = build_user("user_simulator", env, task, llm=user_llm)
+
+            if violation_type == "user_policy_violation":
+                user.instructions = (
+                    (user.instructions or "")
+                    + f"\n\nIMPORTANT: {meta['user_policy_violation']}"
+                )
+
+            orchestrator = Orchestrator(
+                domain=domain,
+                agent=agent,
+                user=user,
+                environment=env,
+                task=task,
+                max_steps=max_steps,
+                max_errors=max_errors,
+                seed=rng.randint(0, 2**31),
+                simulation_id=str(uuid.uuid4()),
+            )
+
+            logger.info(
+                f"Task {task.id}: running norm='{norm_id}' type='{violation_type}'."
+            )
+
+            try:
+                result = run_simulation(orchestrator)
+            except Exception as e:
+                logger.error(
+                    f"Task {task.id} / {norm_id} / {violation_type}: "
+                    f"simulation failed — {e}. Skipping."
+                )
+                skipped += 1
+                continue
+
+            sim_dict = result.model_dump(mode="json")
+            sim_dict["violated_norm"] = norm_id
+            sim_dict["violation_type"] = violation_type
+
+            serialised_simulations.append(sim_dict)
+            serialised_tasks.append(task.model_dump(mode="json"))
+
+            reward = result.reward_info.reward if result.reward_info else "N/A"
+            logger.info(
+                f"Task {task.id}: done. reward={reward}, "
+                f"violated_norm={norm_id}, violation_type={violation_type}."
+            )
 
     output = {
         "timestamp": run_timestamp,
@@ -315,7 +408,7 @@ def run_non_compliant_traces(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate non-compliant agent traces for any tau2 domain.",
+        description="Generate non-compliant traces for any tau2 domain.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
@@ -337,7 +430,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--user-llm",
         required=True,
-        help="LLM for the user simulator, e.g. openai/gpt-4.1-mini.",
+        help="LLM for the user simulator, e.g. openai/gpt-4.1.",
     )
     parser.add_argument(
         "--output",
@@ -367,7 +460,7 @@ def parse_args() -> argparse.Namespace:
         "--seed",
         type=int,
         default=42,
-        help="Random seed for norm selection and per-simulation seeds.",
+        help="Random seed for per-simulation seeds.",
     )
     return parser.parse_args()
 
