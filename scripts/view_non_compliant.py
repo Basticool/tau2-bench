@@ -90,12 +90,23 @@ def load_data(
     norm_filter: str | None,
 ) -> list[dict]:
     with open(data_path) as f:
-        raw = json.load(f)
-
-    tasks_by_id = {str(t["id"]): t for t in raw.get("tasks", [])}
+        try:
+            raw = json.load(f)
+            tasks_by_id = {str(t["id"]): t for t in raw.get("tasks", [])}
+            simulations = raw.get("simulations", [])
+        except json.JSONDecodeError:
+            f.seek(0)
+            records = [json.loads(line) for line in f if line.strip()]
+            sim_records = [r for r in records if r.get("type") == "simulation"]
+            tasks_by_id = {str(r["task"]["id"]): r["task"] for r in sim_records}
+            simulations = []
+            for r in sim_records:
+                s = r["simulation"]
+                s.setdefault("task_id", str(r["task"]["id"]))
+                simulations.append(s)
 
     items = []
-    for idx, sim in enumerate(raw.get("simulations", [])):
+    for idx, sim in enumerate(simulations):
         task_id      = str(sim.get("task_id", ""))
         task         = tasks_by_id.get(task_id, {})
         ri           = sim.get("reward_info") or {}

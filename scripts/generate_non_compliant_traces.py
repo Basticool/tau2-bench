@@ -70,6 +70,7 @@ import argparse
 import json
 import random
 import subprocess
+import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -121,7 +122,7 @@ def get_applicable_norms(task, norms: dict) -> list[str]:
     for norm_id, norm in norms.items():
         meta = norm.get("metadata", {})
 
-        if not any(vt in meta for vt in VIOLATION_TYPES):
+        if not any(meta.get(vt) is not None for vt in VIOLATION_TYPES):
             continue
 
         always = meta.get("always_applicable", False)
@@ -234,6 +235,7 @@ def run_non_compliant_traces(
     user_llm: str,
     output_path: Path,
     task_ids: list[str] | None = None,
+    target_norm_ids: list[str] | None = None,
     max_steps: int = 30,
     max_errors: int = 10,
     seed: int = 42,
@@ -257,6 +259,34 @@ def run_non_compliant_traces(
 
     tasks = get_tasks(domain, task_ids=task_ids)
     logger.info(f"Loaded {len(tasks)} tasks.")
+    print("Planning runs and counting traces...", flush=True)
+    sys.stdout.flush()
+
+    selected_norm_ids: set[str] | None = None
+    if target_norm_ids:
+        selected_norm_ids = set(target_norm_ids)
+        missing_norms = sorted(selected_norm_ids - set(norms.keys()))
+        if missing_norms:
+            raise ValueError(
+                "Requested norm IDs were not found in the norms file: "
+                + ", ".join(missing_norms)
+            )
+        logger.info(
+            f"Filtering runs to {len(selected_norm_ids)} requested norm(s): "
+            f"{sorted(selected_norm_ids)}"
+        )
+
+    run_plan: list[tuple[object, list[str]]] = []
+    for task in tasks:
+        applicable = get_applicable_norms(task, norms)
+        if selected_norm_ids is not None:
+            applicable = [norm_id for norm_id in applicable if norm_id in selected_norm_ids]
+        run_plan.append((task, applicable))
+
+    total_traces = sum(len(applicable) for _, applicable in run_plan)
+    print(f"Total traces to run: {total_traces}", flush=True)
+    sys.stdout.flush()
+    logger.info(f"Total traces to run: {total_traces}")
 
     _probe_env = build_environment(domain)
     base_policy = _probe_env.get_policy()
@@ -295,131 +325,133 @@ def run_non_compliant_traces(
         "retrieval_config_kwargs": None,
     }
 
-    serialised_tasks: list[dict] = []
-    serialised_simulations: list[dict] = []
+    saved = 0
     skipped = 0
 
-    for task in tasks:
-        applicable = get_applicable_norms(task, norms)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as out_f:
 
-        if not applicable:
-            agent_tool_names = (
-                [
-                    a.name
-                    for a in (task.evaluation_criteria.actions or [])
-                    if a.requestor == "assistant"
-                ]
-                if task.evaluation_criteria
-                else []
-            )
-            logger.warning(
-                f"Task {task.id}: no applicable norms for expected agent actions "
-                f"{agent_tool_names}. Skipping."
-            )
-            skipped += 1
-            continue
+        def _write(record: dict) -> None:
+            out_f.write(json.dumps(record) + "\n")
+            out_f.flush()
 
-        logger.info(
-            f"Task {task.id}: {len(applicable)} norm(s) to violate: {applicable}"
-        )
+        _write({"type": "header", "timestamp": run_timestamp, "info": info_dict})
 
-        for norm_id in applicable:
-            norm = norms[norm_id]
-            meta = norm["metadata"]
-            applied_violations: list[str] = []
+        for task, applicable in run_plan:
 
-            env = build_environment(domain)
-
-            # --- policy_violation: patch agent policy ---
-            if "policy_violation" in meta:
-                try:
-                    agent_policy = build_violated_agent_policy(base_policy, norm)
-                    env.policy = agent_policy
-                    applied_violations.append("policy_violation")
-                except ValueError as e:
-                    logger.error(
-                        f"Task {task.id} / {norm_id}: could not build violated policy "
-                        f"— {e}. Skipping policy_violation for this norm."
-                    )
-                    agent_policy = base_policy
-            else:
-                agent_policy = base_policy
-
-            # --- build participants ---
-            agent = LLMAgent(
-                tools=env.get_tools(),
-                domain_policy=agent_policy,
-                llm=agent_llm,
-            )
-            user = build_user("user_simulator", env, task, llm=user_llm)
-
-            # --- user_policy_violation: append to user instructions ---
-            if "user_policy_violation" in meta:
-                user.instructions = (
-                    (user.instructions or "")
-                    + f"\n\nIMPORTANT INSTRUCTION: {meta['user_policy_violation']}"
+            if not applicable:
+                agent_tool_names = (
+                    [
+                        a.name
+                        for a in (task.evaluation_criteria.actions or [])
+                        if a.requestor == "assistant"
+                    ]
+                    if task.evaluation_criteria
+                    else []
                 )
-                applied_violations.append("user_policy_violation")
-
-            orchestrator = Orchestrator(
-                domain=domain,
-                agent=agent,
-                user=user,
-                environment=env,
-                task=task,
-                max_steps=max_steps,
-                max_errors=max_errors,
-                seed=rng.randint(0, 2**31),
-                simulation_id=str(uuid.uuid4()),
-            )
-
-            # --- env_modification: patch orchestrator to apply AFTER set_state ---
-            if "env_modification" in meta:
-                patch_orchestrator_env_modification(
-                    orchestrator, env, meta["env_modification"]
-                )
-                applied_violations.append("env_modification")
-
-            logger.info(
-                f"Task {task.id}: running norm='{norm_id}' "
-                f"with violations={applied_violations}."
-            )
-
-            try:
-                result = run_simulation(orchestrator)
-            except Exception as e:
-                logger.error(
-                    f"Task {task.id} / {norm_id}: simulation failed — {e}. Skipping."
+                logger.warning(
+                    f"Task {task.id}: no applicable norms for expected agent actions "
+                    f"{agent_tool_names}. Skipping."
                 )
                 skipped += 1
                 continue
 
-            sim_dict = result.model_dump(mode="json")
-            sim_dict["violated_norm"] = norm_id
-            sim_dict["applied_violations"] = applied_violations
-
-            serialised_simulations.append(sim_dict)
-            serialised_tasks.append(task.model_dump(mode="json"))
-
-            reward = result.reward_info.reward if result.reward_info else "N/A"
             logger.info(
-                f"Task {task.id}: done. reward={reward}, "
-                f"violated_norm={norm_id}, applied_violations={applied_violations}."
+                f"Task {task.id}: {len(applicable)} norm(s) to violate: {applicable}"
             )
 
-    output = {
-        "timestamp": run_timestamp,
-        "info": info_dict,
-        "tasks": serialised_tasks,
-        "simulations": serialised_simulations,
-    }
+            for norm_id in applicable:
+                norm = norms[norm_id]
+                meta = norm["metadata"]
+                applied_violations: list[str] = []
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w") as f:
-        json.dump(output, f, indent=2)
+                env = build_environment(domain)
+
+                # --- policy_violation: patch agent policy ---
+                if meta.get("policy_violation") is not None:
+                    try:
+                        agent_policy = build_violated_agent_policy(base_policy, norm)
+                        env.policy = agent_policy
+                        applied_violations.append("policy_violation")
+                    except ValueError as e:
+                        logger.error(
+                            f"Task {task.id} / {norm_id}: could not build violated policy "
+                            f"— {e}. Skipping policy_violation for this norm."
+                        )
+                        agent_policy = base_policy
+                else:
+                    agent_policy = base_policy
+
+                # --- build participants ---
+                agent = LLMAgent(
+                    tools=env.get_tools(),
+                    domain_policy=agent_policy,
+                    llm=agent_llm,
+                )
+                user = build_user("user_simulator", env, task, llm=user_llm)
+
+                # --- user_policy_violation: append to user instructions ---
+                if meta.get("user_policy_violation") is not None:
+                    user.instructions = (
+                        (user.instructions or "")
+                        + f"\n\nIMPORTANT INSTRUCTION: {meta['user_policy_violation']}"
+                    )
+                    applied_violations.append("user_policy_violation")
+
+                orchestrator = Orchestrator(
+                    domain=domain,
+                    agent=agent,
+                    user=user,
+                    environment=env,
+                    task=task,
+                    max_steps=max_steps,
+                    max_errors=max_errors,
+                    seed=rng.randint(0, 2**31),
+                    simulation_id=str(uuid.uuid4()),
+                )
+
+                # --- env_modification: patch orchestrator to apply AFTER set_state ---
+                if meta.get("env_modification") is not None:
+                    patch_orchestrator_env_modification(
+                        orchestrator, env, meta["env_modification"]
+                    )
+                    applied_violations.append("env_modification")
+
+                logger.info(
+                    f"Task {task.id}: running norm='{norm_id}' "
+                    f"with violations={applied_violations}."
+                )
+
+                try:
+                    result = run_simulation(orchestrator)
+                except Exception as e:
+                    logger.error(
+                        f"Task {task.id} / {norm_id}: simulation failed — {e}. Skipping."
+                    )
+                    skipped += 1
+                    continue
+
+                sim_dict = result.model_dump(mode="json")
+                sim_dict["violated_norm"] = norm_id
+                sim_dict["applied_violations"] = applied_violations
+
+                _write({
+                    "type": "simulation",
+                    "task": task.model_dump(mode="json"),
+                    "simulation": sim_dict,
+                })
+                saved += 1
+
+                reward = result.reward_info.reward if result.reward_info else "N/A"
+                logger.info(
+                    f"Task {task.id}: done. reward={reward}, "
+                    f"violated_norm={norm_id}, applied_violations={applied_violations}."
+                )
+
+        _write({"type": "footer", "saved": saved, "skipped": skipped})
 
     logger.info(
-        f"Saved {len(serialised_simulations)} simulations to {output_path}. "
+        f"Saved {saved} simulations to {output_path}. "
         f"Skipped: {skipped}."
     )
 
@@ -468,6 +500,16 @@ def parse_args() -> argparse.Namespace:
         help="Subset of task IDs to run (e.g. --task-ids 0 1 5). Runs all if omitted.",
     )
     parser.add_argument(
+        "--norm-ids",
+        nargs="+",
+        default=None,
+        help=(
+            "Optional norm IDs to violate. Provide one or multiple IDs "
+            "(e.g. --norm-ids N1-cancel N3-cancel). If omitted, all applicable "
+            "norms are used."
+        ),
+    )
+    parser.add_argument(
         "--max-steps",
         type=int,
         default=30,
@@ -497,6 +539,7 @@ if __name__ == "__main__":
         user_llm=args.user_llm,
         output_path=args.output,
         task_ids=args.task_ids,
+        target_norm_ids=args.norm_ids,
         max_steps=args.max_steps,
         max_errors=args.max_errors,
         seed=args.seed,
