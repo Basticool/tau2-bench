@@ -1,33 +1,86 @@
 # Non-Compliant Trace Generation
 
+## Overview
+
+The pipeline generates non-compliant agent traces for norm compliance research. For each tau2 task, it discovers all applicable norms and runs one simulation per norm — applying every available violation mechanism simultaneously to maximise the chance of observing the violation in the resulting trace.
+
+## Norms and Propositions
+
+The retail domain norms and atomic propositions live in `norms_and_propositions/`.
+
+**`combined_retail_norms.json`** — the primary norms file. Each norm entry specifies:
+- `precondition` — LTLf formula: conditions under which the norm activates
+- `obligation` — LTLf formula: what the agent must (not) do
+- `obligation_type` — `"maintenance"` or `"persistence"`
+- `reparative` — norm ID to invoke as a reparation (CTD), or `null`
+- `metadata`:
+  - `constrained_actions` — tool call names gated by this norm
+  - `always_applicable` — (optional) include for every task, regardless of expected actions
+  - `policy_quote` — verbatim substring of the domain policy to replace
+  - `policy_violation` — agent override: injected in place of `policy_quote` to make a policy-following agent misbehave
+  - `user_policy_violation` — adversarial instruction appended to the user simulator to provoke the violation from the user side
+  - `env_modification` — structured DB mutation spec to create an environment state where the norm cannot be satisfied
+
+**`atomic_propositions.json`** — the AP vocabulary used in norm formulas. Each AP entry describes:
+- `ap_kind` — one of `tool_call`, `tool_result`, `observation`, `structural`
+- `grounding_rule` — how to evaluate the AP at a given timestep
+- `examples` — illustrative trace turns
+
+The retail domain covers **44 norms** across 8 action families (cancel, modify order address/payment/items, return, exchange, modify user address, transfer) plus authentication and procedural constraints.
+
+## Violation Types
+
+Each norm can carry up to three violation mechanisms, all applied in the same simulation run:
+
+| Type | Mechanism | Where applied |
+|------|-----------|---------------|
+| `policy_violation` | Replaces `policy_quote` with an override sentence that instructs the agent to break the norm | Agent's domain policy |
+| `user_policy_violation` | Appends adversarial instructions so the user provokes the violation | User simulator prompt |
+| `env_modification` | Mutates the database (e.g. sets order status to `delivered`) so the world state makes the norm impossible to satisfy | Environment DB, applied after `_initialize_environment` to survive task resets |
+
+## Pipeline
+
 ```mermaid
 flowchart TD
-    A([For each task]) --> B[Get expected actions]
-    B --> C{Norm exists\nfor one of those actions?}
-    C -- No --> D([Skip])
-    C -- Yes --> E[Pick one of those norms\nat random]
-    E --> F[Replace policy quote\nwith policy violation override]
-    F --> G[Run simulation]
-    G --> H([Save trace +\nviolated norm label])
+    A([For each task]) --> B[Get expected agent actions]
+    B --> C[Find norms associated with that action]
+    C --> F([For each applicable norm])
+    F --> G{policy_violation\npresent?}
+    G -- Yes --> H[Patch agent policy:\nreplace policy_quote with policy_violation]
+    G -- No --> I
+    H --> I{user_policy_violation\npresent?}
+    I -- Yes --> J[Append adversarial instruction\nto user simulator]
+    I -- No --> K
+    J --> K{env_modification\npresent?}
+    K -- Yes --> L[Patch orchestrator to mutate DB\nafter environment init]
+    K -- No --> M
+    L --> M[Run simulation]
+    M --> N([Save trace with\nviolated_norm + applied_violations])
 ```
 
-For each task, the pipeline looks at which agent tool calls are expected, finds norms in the domain norms file whose `constrained_actions` match, randomly picks one to violate, and patches the agent's policy — replacing the norm's `policy_quote` with its `policy_violation` sentence (same text, plus an explicit "Except for [action]: do not comply" override). The simulation runs normally and the result is saved in the standard trajectories format with an added `violated_norm` field.
-
-Each domain norms file (e.g. `norms_and_propositions/retail_norms.json`) must define for each norm:
-- `constrained_actions` — tool call names the norm gates
-- `policy_quote` — verbatim substring of the domain policy
-- `policy_violation` — the override sentence injected into the agent's policy
-
-### Generate traces
+## Generate Traces
 
 ```bash
 uv sync
 uv run python scripts/generate_non_compliant_traces.py \
     --domain retail \
-    --norms  norms_and_propositions/retail_norms.json \
+    --norms  norms_and_propositions/combined_retail_norms.json \
     --agent-llm openai/gpt-4.1 \
-    --user-llm  openai/gpt-4.1-mini \
+    --user-llm  openai/gpt-4.1 \
     --output results/non_compliant_retail.json
+```
+
+Run on a subset of tasks and/or specific norms:
+
+```bash
+uv run python scripts/generate_non_compliant_traces.py \
+    --domain retail \
+    --norms  norms_and_propositions/combined_retail_norms.json \
+    --agent-llm openai/gpt-4.1 \
+    --user-llm  openai/gpt-4.1 \
+    --task-ids 0 1 5 \
+    --norm-ids N1-cancel N3-cancel \
+    --output results/non_compliant_retail_subset.json
 ```
 
 | Flag | Description |
@@ -36,16 +89,19 @@ uv run python scripts/generate_non_compliant_traces.py \
 | `--norms` | Path to the domain norms JSON file |
 | `--agent-llm` | LLM for the agent |
 | `--user-llm` | LLM for the user simulator |
-| `--output` | Output file path |
+| `--output` | Output file path (JSONL) |
 | `--task-ids` | Subset of task IDs (omit to run all) |
-| `--seed` | Random seed for norm selection (default: 42) |
+| `--norm-ids` | Subset of norm IDs to violate (omit to use all applicable norms) |
+| `--max-steps` | Maximum steps per simulation (default: 30) |
+| `--max-errors` | Maximum tool errors per simulation (default: 10) |
+| `--seed` | Random seed for per-simulation seeds (default: 42) |
 
-### Visualize traces
+## Visualize Traces
 
 ```bash
 uv run --with flask python scripts/view_non_compliant.py \
     --data  results/non_compliant_retail.json \
-    --norms norms_and_propositions/retail_norms.json
+    --norms norms_and_propositions/combined_retail_norms.json
 ```
 
 Then open `http://localhost:5010`. Use `←` / `→` (or `p` / `n`) to navigate. Filter by violated norm using the chip bar at the top.
@@ -57,6 +113,46 @@ Then open `http://localhost:5010`. Use `←` / `→` (or `p` / `n`) to navigate.
 | `--norm` | Filter to a specific norm ID |
 | `--failed-only` | Show only traces where the agent failed (reward = 0) |
 | `--port` | Port (default: 5010) |
+
+---
+
+# Norm AP Labeling UI
+
+The Streamlit app at `norm-ap-labeling-ui/` is a human-in-the-loop labeling pipeline for assigning atomic proposition (AP) truth values to non-compliant traces, grouped by norm.
+
+## What it does
+
+- Loads traces from the JSONL output of the generation pipeline, the norms file, and the AP definitions.
+- Groups traces by `violated_norm` so labelers can work through all traces for one norm at a time.
+- **Auto-labels** `tool_call` propositions deterministically using `ApRegexSensor` — these are true at turn `t` iff the assistant message contains a tool call whose name exactly matches the proposition's `tool_name`.
+- Presents the remaining propositions (`tool_result`, `observation`, `structural`) for human labeling, showing the relevant turns and grounding rules.
+- Persists labels to per-norm JSONL files in `resources/labels/`.
+- Exports a combined labeled dataset via the Export page.
+
+## Modes
+
+| Mode | Description |
+|------|-------------|
+| `simple` | No login required; all norms accessible directly. Suitable for single-labeler use. |
+| `multi_user` | Login required; admin allocates norm batches to users via a job system. Suitable for team labeling. |
+
+Set `APP_MODE` in `norm-ap-labeling-ui/app.py` to switch modes.
+
+## Run
+
+```bash
+cd norm-ap-labeling-ui
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+Default data paths (override with environment variables):
+
+| Env var | Default |
+|---------|---------|
+| `TRACES_PATH` | `../results/non_compliant_traces.json` |
+| `NORMS_PATH` | `../norms_and_propositions/combined_retail_norms.json` |
+| `PROPS_PATH` | `../../data/tau_bench/retail/atomic_propositions.json` |
 
 ---
 
