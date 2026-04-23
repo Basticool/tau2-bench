@@ -56,6 +56,20 @@ def run_startup(app_mode: str) -> None:
         and defn.get("metadata", {}).get("tool_name")
     }
 
+    # Which props require manual labeling (only observation kind)
+    obs_prop_ids: set[str] = {
+        prop_id
+        for prop_id, defn in propositions.items()
+        if defn.get("metadata", {}).get("ap_kind") == "observation"
+    }
+
+    # Norms that have at least one observation prop → need labeling
+    norms_with_obs: set[str] = {
+        norm_id
+        for norm_id, props_list in norm_props.items()
+        if any(p in obs_prop_ids for p in props_list)
+    }
+
     sensors = build_auto_label_sensors(propositions)
 
     # Pre-compute auto-labels: {norm_id: {sim_id: [{prop_id: bool} per message]}}
@@ -78,6 +92,8 @@ def run_startup(app_mode: str) -> None:
         "norm_traces": norm_traces,
         "norm_props": norm_props,
         "tool_call_props": tool_call_props,
+        "obs_prop_ids": obs_prop_ids,
+        "norms_with_obs": norms_with_obs,
         "norm_auto_labels": norm_auto_labels,
         "app_mode": app_mode,
         "_startup_done": True,

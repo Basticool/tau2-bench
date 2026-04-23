@@ -182,10 +182,13 @@ def render() -> None:
     propositions: dict = ss["propositions"]
     norm_props: dict = ss["norm_props"]
     tool_call_props: dict = ss["tool_call_props"]
+    obs_prop_ids: set = ss["obs_prop_ids"]
+    norms_with_obs: set = ss["norms_with_obs"]
     norm_auto_labels: dict = ss["norm_auto_labels"]
     app_mode: str = ss.get("app_mode", "simple")
 
-    available_norms = list(norm_traces.keys())
+    # Only norms that contain at least one observation prop need labeling
+    available_norms = [n for n in norm_traces if n in norms_with_obs]
     if not available_norms:
         st.warning("No traces found in the dataset.")
         return
@@ -313,11 +316,14 @@ def render() -> None:
 
     # ── Column header legend ───────────────────────────────────────────────────
     st.caption(
-        "Left: full message content. Right: check propositions that hold **at this turn**. "
-        "🔒 columns are auto-labeled from tool calls."
+        "Left: full message content. Right: check **observation** propositions that hold "
+        "at this turn. 🔒 props are auto-labeled from tool calls (shown for reference)."
     )
 
-    manual_props = [p for p in props if p not in tool_call_props]
+    # observation props → manual checkboxes
+    # tool_call props   → shown locked (auto-labeled, for reference)
+    # all other kinds   → not shown, not saved
+    manual_props = [p for p in props if p in obs_prop_ids]
     auto_props   = [p for p in props if p in tool_call_props]
 
     # ── Per-message labeling rows ──────────────────────────────────────────────
