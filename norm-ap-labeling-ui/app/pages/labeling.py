@@ -222,14 +222,19 @@ def render() -> None:
             icon = "✓" if n_done >= n_total else ("◑" if n_done > 0 else "○")
             return f"{icon} {nid}  ({n_done}/{n_total})"
 
+        _current_norm = ss.get("_active_norm")
+        if _current_norm not in available_norms:
+            _current_norm = available_norms[0]
+        norm_idx = available_norms.index(_current_norm)
+
         selected_norm = st.radio(
             "Norms:",
             available_norms,
+            index=norm_idx,
             format_func=_norm_label,
-            key="norm_selector",
         )
 
-        if ss.get("_active_norm") != selected_norm:
+        if selected_norm != ss.get("_active_norm"):
             ss["_active_norm"] = selected_norm
             ss.pop("post_norm_editing", None)
 
