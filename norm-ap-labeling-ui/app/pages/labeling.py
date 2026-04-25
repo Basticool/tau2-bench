@@ -365,7 +365,7 @@ def render() -> None:
                     for prop_id in manual_props:
                         st.radio(
                             _short_prop(prop_id),
-                            options=["unsure", "yes", "no"],
+                            options=["no", "yes"],
                             index=0,
                             horizontal=True,
                             help=prop_id + " — " + propositions.get(prop_id, {}).get("description", ""),
@@ -386,7 +386,7 @@ def render() -> None:
                 # Manual props: read from session state (radio widget value)
                 for prop_id in manual_props:
                     ap_labels[prop_id] = ss.get(
-                        _chk_key(norm_id, sim_id, orig_i, prop_id), "unsure"
+                        _chk_key(norm_id, sim_id, orig_i, prop_id), "no"
                     )
                 turns.append({
                     "turn_idx": msg.get("turn_idx", orig_i),
