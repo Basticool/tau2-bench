@@ -11,9 +11,15 @@ from __future__ import annotations
 
 import asyncio
 import re
+import sys
+from pathlib import Path
 
-from norm_compliance.sensors import ApRegexSensor
-from norm_compliance.models import Turn
+_APP_ROOT = str(Path(__file__).resolve().parents[2])
+if _APP_ROOT not in sys.path:
+    sys.path.insert(0, _APP_ROOT)
+
+from norm_compliance.sensors import ApRegexSensor  # noqa: E402
+from norm_compliance.models import Turn  # noqa: E402
 
 
 def build_auto_label_sensors(propositions: dict) -> dict[str, ApRegexSensor]:
