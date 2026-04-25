@@ -9,6 +9,7 @@ import requests
 import streamlit as st
 
 _GH_API = "https://api.github.com"
+_APP_ROOT = Path(__file__).resolve().parents[2]
 
 
 @st.cache_resource
@@ -17,6 +18,9 @@ def _gh_config() -> dict | None:
         cfg = st.secrets.get("github", {})
         token = cfg.get("token", "")
         repo = cfg.get("repo", "")
+        # Accept both "owner/repo" and full URLs like "https://github.com/owner/repo.git"
+        if "github.com" in repo:
+            repo = repo.rstrip("/").removesuffix(".git").split("github.com/")[-1]
         if token and repo:
             return {
                 "token": token,
@@ -43,7 +47,11 @@ def _headers() -> dict:
 
 def _gh_path(path: str | Path) -> str:
     cfg = _gh_config()
-    p = str(path)
+    try:
+        rel = Path(path).resolve().relative_to(_APP_ROOT)
+    except ValueError:
+        rel = Path(str(path).lstrip("/"))
+    p = str(rel)
     return f"{cfg['prefix']}/{p}" if cfg["prefix"] else p
 
 
