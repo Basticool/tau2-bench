@@ -176,6 +176,12 @@ def _render_post_norm_editor(norm_id: str) -> None:
 
 def render() -> None:
     ss = st.session_state
+    if ss.pop("scroll_to_top", False):
+        st.components.v1.html(
+            "<script>window.parent.document.querySelector("
+            "'section[data-testid=\"stMain\"]').scrollTo(0, 0);</script>",
+            height=0,
+        )
     norm_traces: dict = ss["norm_traces"]
     norms: dict = ss["norms"]
     propositions: dict = ss["propositions"]
@@ -399,6 +405,7 @@ def render() -> None:
             new_completed = _get_completed_ids(norm_id, app_mode, ss)
             if len(new_completed) >= n_total and not ss.get(f"props_edited_{norm_id}"):
                 ss["post_norm_editing"] = norm_id
+            ss["scroll_to_top"] = True
             st.rerun()
 
     with col_skip:
