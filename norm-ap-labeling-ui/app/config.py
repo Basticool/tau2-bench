@@ -20,7 +20,7 @@ DEFAULT_NORMS_PATH = os.environ.get(
 )
 DEFAULT_PROPS_PATH = os.environ.get(
     "PROPS_PATH",
-    str(_NORM_COMPLIANCE_DIR / "data" / "tau_bench" / "retail" / "atomic_propositions.json"),
+    str(_APP_ROOT / "resources" / "atomic_propositions.json"),
 )
 
 # norm_compliance repo root (needed by auto_labeler to import sensors.py)
