@@ -1,0 +1,466 @@
+{
+  "agent_called_find_user_id_by_email": {
+    "description": "The assistant message issues a find_user_id_by_email tool call.",
+    "examples": [
+      {
+        "assistant": "Let me look up your account. [tool_call: find_user_id_by_email(email='sara.doe@example.com')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "tool_call",
+      "tool_name": "find_user_id_by_email",
+      "grounding_rule": "True at timestep t iff the assistant message at t contains a tool call whose name equals 'find_user_id_by_email'."
+    }
+  },
+  "agent_called_find_user_id_by_name_zip": {
+    "description": "The assistant message issues a find_user_id_by_name_zip tool call.",
+    "examples": [
+      {
+        "assistant": "I'll look you up by name and zip instead. [tool_call: find_user_id_by_name_zip(first_name='Sara', last_name='Doe', zip='90210')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "tool_call",
+      "tool_name": "find_user_id_by_name_zip",
+      "grounding_rule": "True at timestep t iff the assistant message at t contains a tool call whose name equals 'find_user_id_by_name_zip'."
+    }
+  },
+  "auth_tool_returned_user_id": {
+    "description": "A tool-result message returns a valid user id as the result of a preceding find_user_id_by_email or find_user_id_by_name_zip call.",
+    "examples": [
+      {
+        "tool": "sara_doe_496"
+      },
+      {
+        "tool": "{\"user_id\": \"sara_doe_496\"}"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "tool_result",
+      "source_tools": [
+        "find_user_id_by_email",
+        "find_user_id_by_name_zip"
+      ],
+      "grounding_rule": "True at timestep t iff (a) the message at t is a tool-result message, (b) the assistant tool call it resolves is find_user_id_by_email or find_user_id_by_name_zip, and (c) the result payload is a valid user id string (not an error, not empty, not a 'not found' signal). A user merely asserting their user id in a natural-language turn does NOT fire this AP."
+    }
+  },
+  "agent_called_cancel_pending_order": {
+    "description": "The assistant message issues a cancel_pending_order tool call.",
+    "examples": [
+      {
+        "assistant": "Cancelling your order now. [tool_call: cancel_pending_order(order_id='#W0000123', reason='no longer needed')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "tool_call",
+      "tool_name": "cancel_pending_order",
+      "tool_type": "WRITE",
+      "grounding_rule": "True at timestep t iff the assistant message at t contains a tool call whose name equals 'cancel_pending_order'."
+    }
+  },
+  "agent_called_modify_pending_order_address": {
+    "description": "The assistant message issues a modify_pending_order_address tool call.",
+    "examples": [
+      {
+        "assistant": "Updating the shipping address now. [tool_call: modify_pending_order_address(order_id='#W0000123', address1='123 Main St', address2='', city='Boston', state='MA', country='USA', zip='02101')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "tool_call",
+      "tool_name": "modify_pending_order_address",
+      "tool_type": "WRITE",
+      "grounding_rule": "True at timestep t iff the assistant message at t contains a tool call whose name equals 'modify_pending_order_address'."
+    }
+  },
+  "agent_called_modify_pending_order_payment": {
+    "description": "The assistant message issues a modify_pending_order_payment tool call.",
+    "examples": [
+      {
+        "assistant": "Switching the payment method. [tool_call: modify_pending_order_payment(order_id='#W0000123', payment_method_id='gift_card_0000001')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "tool_call",
+      "tool_name": "modify_pending_order_payment",
+      "tool_type": "WRITE",
+      "grounding_rule": "True at timestep t iff the assistant message at t contains a tool call whose name equals 'modify_pending_order_payment'."
+    }
+  },
+  "agent_called_modify_pending_order_items": {
+    "description": "The assistant message issues a modify_pending_order_items tool call.",
+    "examples": [
+      {
+        "assistant": "Applying the item changes now. [tool_call: modify_pending_order_items(order_id='#W0000123', item_ids=['1008292230'], new_item_ids=['2001337402'], payment_method_id='credit_card_0000001')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "tool_call",
+      "tool_name": "modify_pending_order_items",
+      "tool_type": "WRITE",
+      "grounding_rule": "True at timestep t iff the assistant message at t contains a tool call whose name equals 'modify_pending_order_items'."
+    }
+  },
+  "agent_called_return_delivered_order_items": {
+    "description": "The assistant message issues a return_delivered_order_items tool call.",
+    "examples": [
+      {
+        "assistant": "Initiating the return. [tool_call: return_delivered_order_items(order_id='#W0000123', item_ids=['1008292230'], payment_method_id='gift_card_0000001')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "tool_call",
+      "tool_name": "return_delivered_order_items",
+      "tool_type": "WRITE",
+      "grounding_rule": "True at timestep t iff the assistant message at t contains a tool call whose name equals 'return_delivered_order_items'."
+    }
+  },
+  "agent_called_exchange_delivered_order_items": {
+    "description": "The assistant message issues an exchange_delivered_order_items tool call.",
+    "examples": [
+      {
+        "assistant": "Processing the exchange. [tool_call: exchange_delivered_order_items(order_id='#W0000123', item_ids=['1008292230'], new_item_ids=['2001337402'], payment_method_id='credit_card_0000001')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "tool_call",
+      "tool_name": "exchange_delivered_order_items",
+      "tool_type": "WRITE",
+      "grounding_rule": "True at timestep t iff the assistant message at t contains a tool call whose name equals 'exchange_delivered_order_items'."
+    }
+  },
+  "agent_called_modify_user_address": {
+    "description": "The assistant message issues a modify_user_address tool call.",
+    "examples": [
+      {
+        "assistant": "Updating your default address. [tool_call: modify_user_address(user_id='sara_doe_496', address1='123 Main St', address2='', city='Boston', state='MA', country='USA', zip='02101')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "tool_call",
+      "tool_name": "modify_user_address",
+      "tool_type": "WRITE",
+      "grounding_rule": "True at timestep t iff the assistant message at t contains a tool call whose name equals 'modify_user_address'."
+    }
+  },
+  "user_requested_cancel_order": {
+    "description": "The user's turn expresses intent to cancel a specific pending order.",
+    "examples": [
+      {
+        "user": "I'd like to cancel order #W0000123, please."
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "user",
+      "grounding_rule": "True at user-turn timestep t iff the user's message expresses intent for this specific action type. The TLM should ground this by semantic match to the action type, not by surface keywords alone. May fire at multiple timesteps in a conversation (user restates intent); only the earliest occurrence triggers the scoped norm."
+    }
+  },
+  "user_requested_modify_order_address": {
+    "description": "The user's turn expresses intent to change the shipping address on a specific pending order.",
+    "examples": [
+      {
+        "user": "Can you change the shipping address on my order?"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "user",
+      "grounding_rule": "True at user-turn timestep t iff the user's message expresses intent for this specific action type. The TLM should ground this by semantic match to the action type, not by surface keywords alone. May fire at multiple timesteps in a conversation (user restates intent); only the earliest occurrence triggers the scoped norm."
+    }
+  },
+  "user_requested_modify_order_payment": {
+    "description": "The user's turn expresses intent to change the payment method on a specific pending order.",
+    "examples": [
+      {
+        "user": "I need to switch the payment method on my order."
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "user",
+      "grounding_rule": "True at user-turn timestep t iff the user's message expresses intent for this specific action type. The TLM should ground this by semantic match to the action type, not by surface keywords alone. May fire at multiple timesteps in a conversation (user restates intent); only the earliest occurrence triggers the scoped norm."
+    }
+  },
+  "user_requested_modify_order_items": {
+    "description": "The user's turn expresses intent to change item variants/options on a specific pending order.",
+    "examples": [
+      {
+        "user": "I want to change the items in my pending order."
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "user",
+      "grounding_rule": "True at user-turn timestep t iff the user's message expresses intent for this specific action type. The TLM should ground this by semantic match to the action type, not by surface keywords alone. May fire at multiple timesteps in a conversation (user restates intent); only the earliest occurrence triggers the scoped norm."
+    }
+  },
+  "user_requested_return_order": {
+    "description": "The user's turn expresses intent to return items from a specific delivered order or send back an order he received.",
+    "examples": [
+      {
+        "user": "I'd like to return these items from my delivered order."
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "user",
+      "grounding_rule": "True at user-turn timestep t iff the user's message expresses intent for this specific action type. The TLM should ground this by semantic match to the action type, not by surface keywords alone. May fire at multiple timesteps in a conversation (user restates intent); only the earliest occurrence triggers the scoped norm."
+    }
+  },
+  "user_requested_exchange_order": {
+    "description": "The user's turn expresses intent to exchange items in a specific delivered order.",
+    "examples": [
+      {
+        "user": "I want to exchange one of the items in my delivered order."
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "user",
+      "grounding_rule": "True at user-turn timestep t iff the user's message expresses intent for this specific action type. The TLM should ground this by semantic match to the action type, not by surface keywords alone. May fire at multiple timesteps in a conversation (user restates intent); only the earliest occurrence triggers the scoped norm."
+    }
+  },
+  "user_requested_modify_user_address": {
+    "description": "The user's turn expresses intent to change the default address on their user profile (distinct from modifying a specific order's address).",
+    "examples": [
+      {
+        "user": "Please update my default address."
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "user",
+      "grounding_rule": "True at user-turn timestep t iff the user's message expresses intent for this specific action type. The TLM should ground this by semantic match to the action type, not by surface keywords alone. May fire at multiple timesteps in a conversation (user restates intent); only the earliest occurrence triggers the scoped norm."
+    }
+  },
+  "agent_listed_action_details": {
+    "description": "The assistant's turn enumerates the next steps it will take in order to perform a future database action (e.g., all action-specific fields such as cancellation reason, new address components, new item ids, or payment method id). And asks for the user to confirm.",
+    "examples": [
+      {
+        "assistant": "To confirm: I'll cancel order #W0000123 with reason 'no longer needed'. Shall I proceed?"
+      },
+      {
+        "assistant": "To confirm: exchanging item 1008292230 for new item 2001337402 in order #W0000123, paying the price difference from credit_card_0000001. Proceed?"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "assistant",
+      "grounding_rule": "True at an assistant-turn timestep t iff the message explicitly lists the concrete parameter values that would be arguments of the imminent tool call. Not satisfied by vague paraphrase such as 'I'll cancel it now'. The TLM should reference the tool schema when judging parameter coverage.",
+      "coverage_notes": "Single AP across all action types. Does not disambiguate which action is being listed; the TLM should ground conservatively (only fire when listing is unambiguously tied to the action under discussion)."
+    }
+  },
+  "user_confirmed_yes": {
+    "description": "The user's turn is an explicit affirmative confirmation of a specific proposed action.",
+    "examples": [
+      {
+        "user": "yes, please cancel it"
+      },
+      {
+        "user": "confirmed, go ahead"
+      },
+      {
+        "user": "yes"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "user",
+      "grounding_rule": "True at a user-turn timestep t iff the message is an explicit affirmative ('yes', 'confirm', 'proceed', 'go ahead') referring to a specific proposed action identifiable from immediate prior context. Not satisfied by ambiguous or conditional replies ('ok I guess', 'sure whatever', 'maybe'). Not satisfied by general agreement absent a specific pending proposal."
+    }
+  },
+  "user_confirmed_no": {
+    "description": "The user's turn is an explicit refusal or retraction of a proposed or pending action.",
+    "examples": [
+      {
+        "user": "no, don't cancel it"
+      },
+      {
+        "user": "wait, actually I changed my mind"
+      },
+      {
+        "user": "never mind"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "user",
+      "grounding_rule": "True at a user-turn timestep t iff the message is an explicit refusal or retraction ('no', 'don't', 'cancel that', 'never mind') of a proposed or pending action. The TLM should read the refusal in the context of the most recently proposed action.",
+      "coverage_notes": "Single AP across all action types. Context (which action is being refused) is established through precondition scoping at the norm level."
+    }
+  },
+  "agent_turn_has_multiple_tool_calls": {
+    "description": "The assistant-turn message contains two or more tool calls.",
+    "examples": [
+      {
+        "assistant": "[tool_call: get_order_details(order_id='#W0000123')] [tool_call: get_user_details(user_id='sara_doe_496')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "structural",
+      "turn_role": "assistant",
+      "grounding_rule": "True at an assistant-turn timestep t iff the message contains two or more tool-call entries. Determined by structural parsing of the message (count of tool-call entries); no semantic judgment required."
+    }
+  },
+  "agent_turn_has_text_with_tool_call": {
+    "description": "The assistant-turn message contains both user-directed text content and at least one tool call in the same turn.",
+    "examples": [
+      {
+        "assistant": "Here are the details of your order. I also see three other orders on your account. [tool_call: get_order_details(order_id='#W0000123')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "structural",
+      "turn_role": "assistant",
+      "grounding_rule": "True at an assistant-turn timestep t iff the message contains (a) user-directed text content --- explanations, questions, statements conveying information to the user --- AND (b) at least one tool-call entry. Brief pre-tool narration alone (e.g., 'let me check that') does not satisfy the text condition; the text must be substantive / user-directed. Determined by structural parsing plus a light check on whether text content is user-directed."
+    }
+  },
+  "agent_called_transfer_to_human_agents": {
+    "description": "The assistant message issues a transfer_to_human_agents tool call.",
+    "examples": [
+      {
+        "assistant": "[tool_call: transfer_to_human_agents(summary='Customer asking about partnership inquiries, outside retail agent scope.')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "tool_call",
+      "tool_name": "transfer_to_human_agents",
+      "tool_type": "GENERIC",
+      "grounding_rule": "True at timestep t iff the assistant message at t contains a tool call whose name equals 'transfer_to_human_agents'."
+    }
+  },
+  "agent_sent_transfer_message": {
+    "description": "The assistant message conveys the required transfer notification text to the user.",
+    "examples": [
+      {
+        "assistant": "YOU ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE HOLD ON."
+      },
+      {
+        "assistant": "You are being transferred to a human agent. Please hold on."
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "assistant",
+      "grounding_rule": "True at an assistant-turn timestep t iff the message conveys the required transfer notification --- the policy-mandated text 'YOU ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE HOLD ON.' --- allowing tolerant matching on case, whitespace, and near-verbatim variants that preserve meaning. LLM-based grounding (ApLlmSensor). Does not accept paraphrases that substantively alter the notification content."
+    }
+  },
+  "agent_called_cancel_with_invalid_reason": {
+    "description": "The assistant message issues a cancel_pending_order tool call whose `reason` argument is not one of the two policy-allowed values.",
+    "examples": [
+      {
+        "assistant": "[tool_call: cancel_pending_order(order_id='#W0000123', reason='changed my mind')]"
+      },
+      {
+        "assistant": "[tool_call: cancel_pending_order(order_id='#W0000123', reason='duplicate order')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "structural",
+      "turn_role": "assistant",
+      "grounding_rule": "True at an assistant-turn timestep t iff the message contains a cancel_pending_order tool call whose `reason` argument, after exact string match, is not a member of {'no longer needed', 'ordered by mistake'}. Exact match: case-sensitive, no paraphrase tolerance. Determined by structural parsing of tool-call arguments."
+    }
+  },
+  "agent_called_cancel_on_non_pending_order": {
+    "description": "The assistant message issues a cancel_pending_order tool call on an order whose status, as observable from the trace, is not 'pending'.",
+    "examples": [
+      {
+        "tool": "{\"order_id\": \"#W0000123\", \"status\": \"delivered\", ...}"
+      },
+      {
+        "assistant": "[tool_call: cancel_pending_order(order_id='#W0000123', reason='no longer needed')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "assistant",
+      "requires_history": true,
+      "grounding_rule": "True at an assistant-turn timestep t iff the message contains a cancel_pending_order tool call whose target `order_id`, based on observable evidence in the prior trace (most recently observed status from get_order_details tool results, or other contextual signals), has a status other than 'pending'. LLM-based grounding (ApLlmSensor): the LLM examines trace history and judges the observed status for the target order. If no status evidence is available in the trace for this order, the LLM returns false for this AP (this case is about status-known-and-wrong, not status-unknown; status-check-before-action is a separate deferred norm)."
+    }
+  },
+  "agent_called_modify_address_on_non_pending_order": {
+    "description": "The assistant message issues a modify_pending_order_address tool call on an order whose status, as observable from the trace, is not 'pending'.",
+    "examples": [
+      {
+        "tool": "{\"order_id\": \"#W0000123\", \"status\": \"delivered\", ...}"
+      },
+      {
+        "assistant": "[tool_call: modify_pending_order_address(order_id='#W0000123', ...)]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "assistant",
+      "requires_history": true,
+      "grounding_rule": "True at an assistant-turn timestep t iff the message contains a modify_pending_order_address tool call whose target `order_id`, based on observable evidence in the prior trace (most recently observed status from get_order_details tool results, or other contextual signals), has a status other than 'pending'. LLM-based grounding (ApLlmSensor). If no status evidence is available in the trace for the target order, the LLM returns false (status-unknown case is covered by the deferred status-check-before-action norm)."
+    }
+  },
+  "agent_called_modify_payment_on_non_pending_order": {
+    "description": "The assistant message issues a modify_pending_order_payment tool call on an order whose status, as observable from the trace, is not 'pending'.",
+    "examples": [
+      {
+        "tool": "{\"order_id\": \"#W0000123\", \"status\": \"delivered\", ...}"
+      },
+      {
+        "assistant": "[tool_call: modify_pending_order_payment(order_id='#W0000123', ...)]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "assistant",
+      "requires_history": true,
+      "grounding_rule": "True at an assistant-turn timestep t iff the message contains a modify_pending_order_payment tool call whose target `order_id`, based on observable evidence in the prior trace (most recently observed status from get_order_details tool results, or other contextual signals), has a status other than 'pending'. LLM-based grounding (ApLlmSensor). If no status evidence is available in the trace for the target order, the LLM returns false (status-unknown case is covered by the deferred status-check-before-action norm)."
+    }
+  },
+  "agent_called_modify_items_on_non_pending_order": {
+    "description": "The assistant message issues a modify_pending_order_items tool call on an order whose status, as observable from the trace, is not 'pending'.",
+    "examples": [
+      {
+        "tool": "{\"order_id\": \"#W0000123\", \"status\": \"delivered\", ...}"
+      },
+      {
+        "assistant": "[tool_call: modify_pending_order_items(order_id='#W0000123', ...)]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "assistant",
+      "requires_history": true,
+      "grounding_rule": "True at an assistant-turn timestep t iff the message contains a modify_pending_order_items tool call whose target `order_id`, based on observable evidence in the prior trace (most recently observed status from get_order_details tool results, or other contextual signals), has a status other than 'pending'. LLM-based grounding (ApLlmSensor). If no status evidence is available in the trace for the target order, the LLM returns false (status-unknown case is covered by the deferred status-check-before-action norm)."
+    }
+  },
+  "agent_called_return_on_non_delivered_order": {
+    "description": "The assistant message issues a return_delivered_order_items tool call on an order whose status, as observable from the trace, is not 'delivered'.",
+    "examples": [
+      {
+        "tool": "{\"order_id\": \"#W0000123\", \"status\": \"pending\", ...}"
+      },
+      {
+        "assistant": "[tool_call: return_delivered_order_items(order_id='#W0000123', item_ids=['1008292230'], payment_method_id='gift_card_0000001')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "assistant",
+      "requires_history": true,
+      "grounding_rule": "True at an assistant-turn timestep t iff the message contains a return_delivered_order_items tool call whose target `order_id`, based on observable evidence in the prior trace, has a status other than 'delivered'. LLM-based grounding (ApLlmSensor). If no status evidence is available in the trace, returns false (status-unknown is covered by the deferred status-check-before-action norm family)."
+    }
+  },
+  "agent_called_exchange_on_non_delivered_order": {
+    "description": "The assistant message issues an exchange_delivered_order_items tool call on an order whose status, as observable from the trace, is not 'delivered'.",
+    "examples": [
+      {
+        "tool": "{\"order_id\": \"#W0000123\", \"status\": \"pending\", ...}"
+      },
+      {
+        "assistant": "[tool_call: exchange_delivered_order_items(order_id='#W0000123', item_ids=['1008292230'], new_item_ids=['2001337402'], payment_method_id='credit_card_0000001')]"
+      }
+    ],
+    "metadata": {
+      "ap_kind": "observation",
+      "turn_role": "assistant",
+      "requires_history": true,
+      "grounding_rule": "True at an assistant-turn timestep t iff the message contains an exchange_delivered_order_items tool call whose target `order_id`, based on observable evidence in the prior trace, has a status other than 'delivered'. LLM-based grounding (ApLlmSensor). If no status evidence is available in the trace, returns false."
+    }
+  }
+}
