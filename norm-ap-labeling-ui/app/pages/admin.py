@@ -122,6 +122,11 @@ def render() -> None:
                 st.success(f"Job `{job_id}` created for **{target_user}**: {', '.join(to_assign)}")
                 st.rerun()
 
+            st.caption(
+                "To create annotator overlap (same traces labeled by multiple people), "
+                "assign the same norm(s) to more than one user."
+            )
+
             if already_assigned:
                 st.caption(f"Already assigned to **{target_user}**: {', '.join(sorted(already_assigned))}")
 

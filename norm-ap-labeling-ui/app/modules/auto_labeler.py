@@ -11,16 +11,9 @@ from __future__ import annotations
 
 import asyncio
 import re
-import sys
-from pathlib import Path
 
-# Add norm_compliance repo root to sys.path so sensors.py can be imported.
-_REPO_ROOT = str(Path(__file__).resolve().parents[4])
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
-
-from norm_compliance.sensors import ApRegexSensor  # noqa: E402
-from norm_compliance.models import Turn  # noqa: E402
+from norm_compliance.sensors import ApRegexSensor
+from norm_compliance.models import Turn
 
 
 def build_auto_label_sensors(propositions: dict) -> dict[str, ApRegexSensor]:

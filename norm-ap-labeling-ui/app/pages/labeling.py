@@ -16,7 +16,7 @@ import json
 
 import streamlit as st
 
-from app.config import JOBS_DIR, LABELS_DIR
+from app.config import DEFAULT_PROPS_PATH, JOBS_DIR, LABELS_DIR
 from app.modules.job_manager import (
     get_completed_sim_ids_job,
     get_completed_sim_ids_simple,
@@ -112,7 +112,6 @@ def _render_post_norm_editor(norm_id: str) -> None:
     ss = st.session_state
     propositions: dict = ss["propositions"]
     norm_props: list[str] = ss["norm_props"].get(norm_id, [])
-    from app.config import DEFAULT_PROPS_PATH
 
     st.success(f"All traces for **{norm_id}** are labeled!")
     st.markdown("### Review proposition descriptions")
@@ -364,9 +363,11 @@ def render() -> None:
                         st.divider()
                     st.caption("Label:")
                     for prop_id in manual_props:
-                        st.checkbox(
+                        st.radio(
                             _short_prop(prop_id),
-                            value=False,
+                            options=["unsure", "yes", "no"],
+                            index=0,
+                            horizontal=True,
                             help=prop_id + " — " + propositions.get(prop_id, {}).get("description", ""),
                             key=_chk_key(norm_id, sim_id, orig_i, prop_id),
                         )
@@ -382,10 +383,10 @@ def render() -> None:
                 # Auto props: read from precomputed auto_labels
                 for prop_id in auto_props:
                     ap_labels[prop_id] = bool(indexed_auto[i].get(prop_id, False))
-                # Manual props: read from session state (checkbox widget value)
+                # Manual props: read from session state (radio widget value)
                 for prop_id in manual_props:
-                    ap_labels[prop_id] = bool(
-                        ss.get(_chk_key(norm_id, sim_id, orig_i, prop_id), False)
+                    ap_labels[prop_id] = ss.get(
+                        _chk_key(norm_id, sim_id, orig_i, prop_id), "unsure"
                     )
                 turns.append({
                     "turn_idx": msg.get("turn_idx", orig_i),

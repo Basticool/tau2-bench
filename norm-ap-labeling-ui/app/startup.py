@@ -16,7 +16,6 @@ def run_startup(app_mode: str) -> None:
         DEFAULT_TRACES_PATH,
         JOBS_DIR,
         LABELS_DIR,
-        NORM_COMPLIANCE_REPO,
     )
     from app.modules.auto_labeler import build_auto_label_sensors, compute_auto_labels
     from app.modules.data_loader import (
@@ -27,9 +26,6 @@ def run_startup(app_mode: str) -> None:
     )
     from app.modules.norm_utils import get_norm_props
     from app.modules.storage import ensure_dir
-
-    if NORM_COMPLIANCE_REPO not in sys.path:
-        sys.path.insert(0, NORM_COMPLIANCE_REPO)
 
     ensure_dir(LABELS_DIR)
     ensure_dir(JOBS_DIR)

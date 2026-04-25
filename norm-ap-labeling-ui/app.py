@@ -8,7 +8,7 @@ import streamlit as st
 from app.startup import run_startup
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-APP_MODE = "simple"  # change to "multi_user" for job-allocation mode
+APP_MODE = "multi_user"  # change to "simple" for single-labeler mode
 
 st.set_page_config(
     page_title="Norm AP Labeling",
