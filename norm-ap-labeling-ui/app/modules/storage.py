@@ -10,6 +10,7 @@ import streamlit as st
 
 _GH_API = "https://api.github.com"
 _APP_ROOT = Path(__file__).resolve().parents[2]
+_cache: dict[str, tuple[str | None, str | None]] = {}
 
 
 @st.cache_resource
@@ -56,14 +57,20 @@ def _gh_path(path: str | Path) -> str:
 
 
 def _gh_get(path: str | Path) -> tuple[str | None, str | None]:
+    key = str(path)
+    if key in _cache:
+        return _cache[key]
     cfg = _gh_config()
     url = f"{_GH_API}/repos/{cfg['repo']}/contents/{_gh_path(path)}"
     resp = requests.get(url, headers=_headers(), params={"ref": cfg["branch"]})
     if resp.status_code == 404:
+        _cache[key] = (None, None)
         return None, None
     resp.raise_for_status()
     data = resp.json()
-    return base64.b64decode(data["content"]).decode("utf-8"), data["sha"]
+    result = base64.b64decode(data["content"]).decode("utf-8"), data["sha"]
+    _cache[key] = result
+    return result
 
 
 def _gh_put(path: str | Path, content: str, sha: str | None = None) -> None:
@@ -76,7 +83,10 @@ def _gh_put(path: str | Path, content: str, sha: str | None = None) -> None:
     }
     if sha:
         body["sha"] = sha
-    requests.put(url, headers=_headers(), json=body).raise_for_status()
+    resp = requests.put(url, headers=_headers(), json=body)
+    resp.raise_for_status()
+    new_sha = resp.json().get("content", {}).get("sha")
+    _cache[str(path)] = (content, new_sha)
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
