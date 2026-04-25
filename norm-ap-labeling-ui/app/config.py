@@ -12,7 +12,7 @@ _NORM_COMPLIANCE_DIR = _TAU2_DIR.parent  # norm_compliance/ (repo root)
 #   PROPS_PATH    path to atomic_propositions.json
 DEFAULT_TRACES_PATH = os.environ.get(
     "TRACES_PATH",
-    str(_TAU2_DIR / "results" / "non_compliant_traces.json"),
+    str(_TAU2_DIR / "results" / "non_compliant_traces_2.json"),
 )
 DEFAULT_NORMS_PATH = os.environ.get(
     "NORMS_PATH",
