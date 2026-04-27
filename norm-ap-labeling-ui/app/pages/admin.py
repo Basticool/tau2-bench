@@ -93,7 +93,8 @@ def render() -> None:
     with tab_alloc:
         st.subheader("Assign norms to a user")
         norm_traces: dict = st.session_state["norm_traces"]
-        available_norms = sorted(norm_traces.keys())
+        norms_with_obs: set = st.session_state.get("norms_with_obs", set())
+        available_norms = sorted(n for n in norm_traces if n in norms_with_obs)
         non_admin_users = [u for u in _load_users() if u != "admin"]
 
         if not non_admin_users:

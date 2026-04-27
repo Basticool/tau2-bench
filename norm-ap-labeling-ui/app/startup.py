@@ -25,7 +25,7 @@ def run_startup(app_mode: str) -> None:
         load_traces,
     )
     from app.modules.norm_utils import get_norm_props
-    from app.modules.storage import ensure_dir
+    from app.modules.storage import ensure_dir, now_iso, read_jsonl, write_jsonl
 
     ensure_dir(LABELS_DIR)
     ensure_dir(JOBS_DIR)
@@ -80,6 +80,59 @@ def run_startup(app_mode: str) -> None:
                 messages = trace.get("simulation", {}).get("messages", [])
                 sim_labels[sim_id] = compute_auto_labels(messages, norm_sensors)
             norm_auto_labels[norm_id] = sim_labels
+
+    # Auto-save norms where every prop is tool_call (no human review needed).
+    fully_auto_norms = [
+        norm_id for norm_id in norm_traces
+        if norm_id in norm_props and norm_id not in norms_with_obs
+    ]
+    if fully_auto_norms:
+        with st.spinner("Auto-saving pre-labeled norms…"):
+            for norm_id in fully_auto_norms:
+                props_for_norm = norm_props.get(norm_id, [])
+                auto_props = [p for p in props_for_norm if p in tool_call_props]
+                labels_path = LABELS_DIR / f"{norm_id}.jsonl"
+
+                existing = read_jsonl(labels_path)
+                completed_sim_ids = {
+                    rec["sim_id"] for rec in existing
+                    if rec.get("unit_status") == "completed"
+                }
+
+                new_records = []
+                for trace in norm_traces[norm_id]:
+                    sim = trace.get("simulation", {})
+                    sim_id = sim.get("id", "")
+                    if sim_id in completed_sim_ids:
+                        continue
+                    messages = sim.get("messages", [])
+                    auto_labels_for_sim = norm_auto_labels.get(norm_id, {}).get(sim_id, [])
+                    turns = []
+                    for orig_i, msg in enumerate(messages):
+                        if msg.get("role") == "system":
+                            continue
+                        msg_auto = (
+                            auto_labels_for_sim[orig_i]
+                            if orig_i < len(auto_labels_for_sim)
+                            else {}
+                        )
+                        turns.append({
+                            "turn_idx": msg.get("turn_idx", orig_i),
+                            "role": msg.get("role", ""),
+                            "ap_labels": {p: bool(msg_auto.get(p, False)) for p in auto_props},
+                            "auto_labeled_props": auto_props,
+                        })
+                    new_records.append({
+                        "sim_id": sim_id,
+                        "norm_id": norm_id,
+                        "unit_status": "completed",
+                        "labeled_by": "auto",
+                        "labeled_at": now_iso(),
+                        "turns": turns,
+                    })
+
+                if new_records:
+                    write_jsonl(labels_path, existing + new_records)
 
     st.session_state.update({
         "traces": traces,

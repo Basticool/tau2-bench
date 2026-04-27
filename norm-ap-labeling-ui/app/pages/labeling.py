@@ -213,7 +213,7 @@ def render() -> None:
             assigned_norms: list[str] = []
             for job in jobs:
                 for nid in job.get("norm_ids", []):
-                    if nid not in assigned_norms and nid in norm_traces:
+                    if nid not in assigned_norms and nid in norm_traces and nid in norms_with_obs:
                         assigned_norms.append(nid)
             if not assigned_norms:
                 st.info("No norms assigned to you yet. Ask an admin.")
