@@ -24,11 +24,13 @@ def run_startup(app_mode: str) -> None:
         load_propositions,
         load_traces,
     )
+    from app.modules.job_manager import cleanup_empty_and_completed_jobs
     from app.modules.norm_utils import get_norm_props
     from app.modules.storage import ensure_dir, now_iso, read_jsonl, write_jsonl
 
     ensure_dir(LABELS_DIR)
     ensure_dir(JOBS_DIR)
+    cleanup_empty_and_completed_jobs(JOBS_DIR)
 
     with st.spinner("Loading data…"):
         traces = load_traces(DEFAULT_TRACES_PATH)

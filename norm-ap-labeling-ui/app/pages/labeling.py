@@ -18,6 +18,7 @@ import streamlit as st
 
 from app.config import DEFAULT_PROPS_PATH, JOBS_DIR, LABELS_DIR
 from app.modules.job_manager import (
+    cleanup_empty_and_completed_jobs,
     get_completed_sim_ids_job,
     get_completed_sim_ids_simple,
     get_user_jobs,
@@ -401,6 +402,8 @@ def render() -> None:
                     "auto_labeled_props": auto_props,
                 })
             _save_labels(norm_id, sim_id, turns, app_mode, ss)
+            if app_mode == "multi_user":
+                cleanup_empty_and_completed_jobs(JOBS_DIR)
 
             new_completed = _get_completed_ids(norm_id, app_mode, ss)
             if len(new_completed) >= n_total and not ss.get(f"props_edited_{norm_id}"):

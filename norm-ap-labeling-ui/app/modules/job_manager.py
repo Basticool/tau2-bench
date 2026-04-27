@@ -180,3 +180,75 @@ def save_simple_label(
 def is_norm_complete_simple(labels_dir: Path, norm_id: str, trace_count: int) -> bool:
     done = len(get_completed_sim_ids_simple(labels_dir, norm_id))
     return done >= trace_count
+
+
+def cleanup_empty_and_completed_jobs(jobs_dir: Path) -> list[str]:
+    """Delete jobs with no norms assigned. Returns deleted job IDs."""
+    deleted: list[str] = []
+    for job in get_all_jobs(jobs_dir):
+        if not job.get("norm_ids"):
+            delete_job(job["job_id"], jobs_dir)
+            deleted.append(job["job_id"])
+    return deleted
+
+
+# ── Bundle helpers ─────────────────────────────────────────────────────────────
+
+_BUNDLES_FILE = "bundles.jsonl"
+
+
+def create_bundle(
+    name: str,
+    norm_ids: list[str],
+    norm_traces: dict[str, list[dict]],
+    jobs_dir: Path,
+) -> str:
+    bundle_id = f"bundle_{uuid.uuid4().hex[:8]}"
+    n_traces = sum(len(norm_traces.get(n, [])) for n in norm_ids)
+    append_jsonl(jobs_dir / _BUNDLES_FILE, {
+        "bundle_id": bundle_id,
+        "name": name,
+        "norm_ids": norm_ids,
+        "n_traces": n_traces,
+        "created_at": now_iso(),
+        "claimed_by": None,
+        "claimed_at": None,
+        "job_id": None,
+    })
+    return bundle_id
+
+
+def get_all_bundles(jobs_dir: Path) -> list[dict]:
+    return read_jsonl(jobs_dir / _BUNDLES_FILE)
+
+
+def get_unclaimed_bundles(jobs_dir: Path) -> list[dict]:
+    return [b for b in get_all_bundles(jobs_dir) if not b.get("claimed_by")]
+
+
+def claim_bundle(
+    bundle_id: str,
+    username: str,
+    norm_traces: dict[str, list[dict]],
+    jobs_dir: Path,
+) -> str:
+    bundles = get_all_bundles(jobs_dir)
+    job_id = None
+    for bundle in bundles:
+        if bundle["bundle_id"] == bundle_id:
+            if bundle.get("claimed_by"):
+                raise ValueError(f"Bundle already claimed by {bundle['claimed_by']}")
+            job_id = create_job(username, bundle["norm_ids"], norm_traces, jobs_dir)
+            bundle["claimed_by"] = username
+            bundle["claimed_at"] = now_iso()
+            bundle["job_id"] = job_id
+            break
+    else:
+        raise ValueError(f"Bundle {bundle_id} not found")
+    write_jsonl(jobs_dir / _BUNDLES_FILE, bundles)
+    return job_id
+
+
+def delete_bundle(bundle_id: str, jobs_dir: Path) -> None:
+    bundles = get_all_bundles(jobs_dir)
+    write_jsonl(jobs_dir / _BUNDLES_FILE, [b for b in bundles if b["bundle_id"] != bundle_id])
