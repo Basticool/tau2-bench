@@ -21,13 +21,14 @@ from app.modules.job_manager import (
     cleanup_empty_and_completed_jobs,
     get_completed_sim_ids_job,
     get_completed_sim_ids_simple,
+    get_job_units,
     get_user_jobs,
     is_norm_complete_job,
     is_norm_complete_simple,
     save_simple_label,
     save_unit_labels,
 )
-from app.modules.storage import now_iso, write_json
+from app.modules.storage import now_iso, read_jsonl, write_json
 
 
 # ── Display helpers ────────────────────────────────────────────────────────────
@@ -105,6 +106,20 @@ def _save_labels(
                 return
     else:
         save_simple_label(LABELS_DIR, norm_id, sim_id, turns)
+
+
+def _get_saved_turns(norm_id: str, sim_id: str, app_mode: str, ss: dict) -> list[dict]:
+    if app_mode == "multi_user":
+        for job in get_user_jobs(ss.get("username", ""), JOBS_DIR):
+            if norm_id in job.get("norm_ids", []):
+                for unit in get_job_units(job["job_id"], JOBS_DIR):
+                    if unit["sim_id"] == sim_id and unit["norm_id"] == norm_id:
+                        return unit.get("turns", [])
+        return []
+    for rec in read_jsonl(LABELS_DIR / f"{norm_id}.jsonl"):
+        if rec.get("sim_id") == sim_id:
+            return rec.get("turns", [])
+    return []
 
 
 # ── Post-norm proposition editor ───────────────────────────────────────────────
@@ -286,7 +301,10 @@ def render() -> None:
     n_done = n_total - len(pending)
     st.progress(n_done / n_total if n_total else 1.0, text=f"{n_done}/{n_total} traces labeled")
 
-    if not pending:
+    _view_key = f"_view_trace_idx_{norm_id}"
+    view_idx = ss.get(_view_key)
+
+    if not pending and view_idx is None:
         if not ss.get(f"props_edited_{norm_id}"):
             st.success(f"All {n_total} traces labeled! Proceeding to proposition review…")
             ss["post_norm_editing"] = norm_id
@@ -295,15 +313,23 @@ def render() -> None:
             st.success(f"All {n_total} traces for **{norm_id}** are labeled and reviewed.")
         return
 
-    trace_pos, trace = pending[0]
+    if view_idx is not None:
+        trace_pos = max(0, min(view_idx, n_total - 1))
+        trace = traces[trace_pos]
+        is_reviewing = trace.get("simulation", {}).get("id", "") in completed_ids
+    else:
+        trace_pos, trace = pending[0]
+        is_reviewing = False
+
     sim = trace.get("simulation", {})
     sim_id = sim.get("id", "")
     messages = sim.get("messages", [])
     task_info = trace.get("task", {})
 
     # ── Trace header ───────────────────────────────────────────────────────────
+    review_badge = "  *(reviewing — already labeled)*" if is_reviewing else ""
     st.markdown(
-        f"**Trace {trace_pos + 1} of {n_total}**"
+        f"**Trace {trace_pos + 1} of {n_total}**{review_badge}"
         f"&nbsp;|&nbsp; task: `{task_info.get('task_id', sim_id)}`"
     )
     if task_info.get("instruction"):
@@ -325,17 +351,31 @@ def render() -> None:
         for orig_i, _ in display_msgs
     ]
 
+    # ── Pre-fill saved labels when reviewing a completed trace ────────────────
+    manual_props = [p for p in props if p in obs_prop_ids]
+    auto_props   = [p for p in props if p in tool_call_props]
+
+    if is_reviewing:
+        saved_turns = _get_saved_turns(norm_id, sim_id, app_mode, ss)
+        turn_idx_to_orig_i = {
+            msg.get("turn_idx", orig_i): orig_i
+            for orig_i, msg in display_msgs
+        }
+        for saved_turn in saved_turns:
+            orig_i = turn_idx_to_orig_i.get(saved_turn.get("turn_idx"), saved_turn.get("turn_idx"))
+            if orig_i is None:
+                continue
+            for prop_id, val in saved_turn.get("ap_labels", {}).items():
+                if prop_id in manual_props:
+                    key = _chk_key(norm_id, sim_id, orig_i, prop_id)
+                    if key not in ss:
+                        ss[key] = "yes" if val in (True, "yes") else "no"
+
     # ── Column header legend ───────────────────────────────────────────────────
     st.caption(
         "Left: full message content. Right: check **observation** propositions that hold "
         "at this turn. 🔒 props are auto-labeled from tool calls (shown for reference)."
     )
-
-    # observation props → manual checkboxes
-    # tool_call props   → shown locked (auto-labeled, for reference)
-    # all other kinds   → not shown, not saved
-    manual_props = [p for p in props if p in obs_prop_ids]
-    auto_props   = [p for p in props if p in tool_call_props]
 
     # ── Per-message labeling rows ──────────────────────────────────────────────
     for i, (orig_i, msg) in enumerate(display_msgs):
@@ -381,16 +421,20 @@ def render() -> None:
 
     # ── Action buttons ─────────────────────────────────────────────────────────
     st.divider()
-    col_save, col_skip, _ = st.columns([1, 1, 6])
+    col_prev, col_save, col_skip, _ = st.columns([1, 1, 1, 5])
+    with col_prev:
+        if st.button("← Prev", key=f"prev_{norm_id}_{sim_id}", disabled=trace_pos == 0):
+            ss[_view_key] = trace_pos - 1
+            ss["scroll_to_top"] = True
+            st.rerun()
+
     with col_save:
         if st.button("Save & Next ▶", type="primary", key=f"save_{norm_id}_{sim_id}"):
             turns = []
             for i, (orig_i, msg) in enumerate(display_msgs):
                 ap_labels: dict[str, bool] = {}
-                # Auto props: read from precomputed auto_labels
                 for prop_id in auto_props:
                     ap_labels[prop_id] = bool(indexed_auto[i].get(prop_id, False))
-                # Manual props: read from session state (radio widget value)
                 for prop_id in manual_props:
                     ap_labels[prop_id] = ss.get(
                         _chk_key(norm_id, sim_id, orig_i, prop_id), "no"
@@ -404,6 +448,7 @@ def render() -> None:
             _save_labels(norm_id, sim_id, turns, app_mode, ss)
             if app_mode == "multi_user":
                 cleanup_empty_and_completed_jobs(JOBS_DIR)
+            ss.pop(_view_key, None)
 
             new_completed = _get_completed_ids(norm_id, app_mode, ss)
             if len(new_completed) >= n_total and not ss.get(f"props_edited_{norm_id}"):
@@ -414,4 +459,5 @@ def render() -> None:
     with col_skip:
         if st.button("Skip ▷", key=f"skip_{norm_id}_{sim_id}"):
             _save_labels(norm_id, sim_id, [], app_mode, ss)
+            ss.pop(_view_key, None)
             st.rerun()

@@ -13,6 +13,7 @@ import streamlit as st
 from app.config import JOBS_DIR, USERS_FILE
 from app.modules.job_manager import (
     claim_bundle,
+    get_job_units,
     get_unclaimed_bundles,
     get_user_jobs,
 )
@@ -30,6 +31,13 @@ def _ensure_admin() -> None:
 
 def _register_user(username: str) -> None:
     append_jsonl(USERS_FILE, {"username": username, "created_at": now_iso()})
+
+
+def _has_pending_work(username: str) -> bool:
+    for job in get_user_jobs(username, JOBS_DIR):
+        if any(u.get("unit_status") != "completed" for u in get_job_units(job["job_id"], JOBS_DIR)):
+            return True
+    return False
 
 
 def _render_bundle_picker(username: str, is_new_user: bool) -> None:
@@ -121,11 +129,8 @@ def render() -> None:
         users = _load_users()
         if username not in users:
             ss["_pending_claim"] = (username, True)
-            st.rerun()
+        elif _has_pending_work(username):
+            ss["username"] = username
         else:
-            jobs = get_user_jobs(username, JOBS_DIR)
-            if jobs:
-                ss["username"] = username
-            else:
-                ss["_pending_claim"] = (username, False)
-            st.rerun()
+            ss["_pending_claim"] = (username, False)
+        st.rerun()
