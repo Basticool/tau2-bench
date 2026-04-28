@@ -1,0 +1,2 @@
+{"bundle_id": "bundle_405b1bac", "name": "batch1", "norm_ids": ["transfer-procedure", "return-only-on-delivered"], "n_traces": 16, "created_at": "2026-04-27T16:59:34.436314+00:00", "claimed_by": "Vele", "claimed_at": "2026-04-27T17:03:21.920838+00:00", "job_id": "job_ce2383ae"}
+{"bundle_id": "bundle_9bf9b4be", "name": "glm", "norm_ids": ["glm_cancel"], "n_traces": 32, "created_at": "2026-04-28T16:09:42.242689+00:00", "claimed_by": "Bastos", "claimed_at": "2026-04-28T16:09:54.048712+00:00", "job_id": "job_4ab9da0f"}

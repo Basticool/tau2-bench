@@ -1,0 +1,272 @@
+{
+  "glm_cancel": {
+    "precondition": "user_requested_cancel_order & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: cancel_pending_order",
+      "constrained_actions": [
+        "cancel_pending_order"
+      ]
+    }
+  },
+  "glm_exchange": {
+    "precondition": "user_requested_exchange_order & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: exchange_delivered_order_items",
+      "constrained_actions": [
+        "exchange_delivered_order_items"
+      ]
+    }
+  },
+  "glm_return": {
+    "precondition": "user_requested_return_order & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: return_delivered_order_items",
+      "constrained_actions": [
+        "return_delivered_order_items"
+      ]
+    }
+  },
+  "glm_mod_items": {
+    "precondition": "user_requested_modify_order_items & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: modify_pending_order_items",
+      "constrained_actions": [
+        "modify_pending_order_items"
+      ]
+    }
+  },
+  "glm_cancel+mod_addr": {
+    "precondition": "user_requested_cancel_order & user_requested_modify_order_address & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: cancel_pending_order, modify_pending_order_address",
+      "constrained_actions": [
+        "cancel_pending_order",
+        "modify_pending_order_address"
+      ]
+    }
+  },
+  "glm_mod_user_addr": {
+    "precondition": "user_requested_modify_user_address & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: modify_user_address",
+      "constrained_actions": [
+        "modify_user_address"
+      ]
+    }
+  },
+  "glm_mod_addr+mod_items+mod_user_addr": {
+    "precondition": "user_requested_modify_order_address & user_requested_modify_order_items & user_requested_modify_user_address & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: modify_pending_order_address, modify_pending_order_items, modify_user_address",
+      "constrained_actions": [
+        "modify_pending_order_address",
+        "modify_pending_order_items",
+        "modify_user_address"
+      ]
+    }
+  },
+  "glm_mod_items+mod_user_addr": {
+    "precondition": "user_requested_modify_order_items & user_requested_modify_user_address & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: modify_pending_order_items, modify_user_address",
+      "constrained_actions": [
+        "modify_pending_order_items",
+        "modify_user_address"
+      ]
+    }
+  },
+  "glm_mod_items+return": {
+    "precondition": "user_requested_modify_order_items & user_requested_return_order & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: modify_pending_order_items, return_delivered_order_items",
+      "constrained_actions": [
+        "modify_pending_order_items",
+        "return_delivered_order_items"
+      ]
+    }
+  },
+  "glm_exchange+mod_items": {
+    "precondition": "user_requested_exchange_order & user_requested_modify_order_items & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: exchange_delivered_order_items, modify_pending_order_items",
+      "constrained_actions": [
+        "exchange_delivered_order_items",
+        "modify_pending_order_items"
+      ]
+    }
+  },
+  "glm_mod_addr+mod_items": {
+    "precondition": "user_requested_modify_order_address & user_requested_modify_order_items & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: modify_pending_order_address, modify_pending_order_items",
+      "constrained_actions": [
+        "modify_pending_order_address",
+        "modify_pending_order_items"
+      ]
+    }
+  },
+  "glm_cancel+mod_items": {
+    "precondition": "user_requested_cancel_order & user_requested_modify_order_items & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: cancel_pending_order, modify_pending_order_items",
+      "constrained_actions": [
+        "cancel_pending_order",
+        "modify_pending_order_items"
+      ]
+    }
+  },
+  "glm_cancel+return": {
+    "precondition": "user_requested_cancel_order & user_requested_return_order & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: cancel_pending_order, return_delivered_order_items",
+      "constrained_actions": [
+        "cancel_pending_order",
+        "return_delivered_order_items"
+      ]
+    }
+  },
+  "glm_cancel+mod_addr+mod_items": {
+    "precondition": "user_requested_cancel_order & user_requested_modify_order_address & user_requested_modify_order_items & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: cancel_pending_order, modify_pending_order_address, modify_pending_order_items",
+      "constrained_actions": [
+        "cancel_pending_order",
+        "modify_pending_order_address",
+        "modify_pending_order_items"
+      ]
+    }
+  },
+  "glm_mod_addr": {
+    "precondition": "user_requested_modify_order_address & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: modify_pending_order_address",
+      "constrained_actions": [
+        "modify_pending_order_address"
+      ]
+    }
+  },
+  "glm_mod_addr+mod_user_addr": {
+    "precondition": "user_requested_modify_order_address & user_requested_modify_user_address & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: modify_pending_order_address, modify_user_address",
+      "constrained_actions": [
+        "modify_pending_order_address",
+        "modify_user_address"
+      ]
+    }
+  },
+  "glm_exchange+mod_addr+mod_items": {
+    "precondition": "user_requested_exchange_order & user_requested_modify_order_address & user_requested_modify_order_items & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: exchange_delivered_order_items, modify_pending_order_address, modify_pending_order_items",
+      "constrained_actions": [
+        "exchange_delivered_order_items",
+        "modify_pending_order_address",
+        "modify_pending_order_items"
+      ]
+    }
+  },
+  "glm_cancel+exchange": {
+    "precondition": "user_requested_cancel_order & user_requested_exchange_order & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: cancel_pending_order, exchange_delivered_order_items",
+      "constrained_actions": [
+        "cancel_pending_order",
+        "exchange_delivered_order_items"
+      ]
+    }
+  },
+  "glm_exchange+return": {
+    "precondition": "user_requested_exchange_order & user_requested_return_order & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: exchange_delivered_order_items, return_delivered_order_items",
+      "constrained_actions": [
+        "exchange_delivered_order_items",
+        "return_delivered_order_items"
+      ]
+    }
+  },
+  "glm_mod_pay": {
+    "precondition": "user_requested_modify_order_payment & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: modify_pending_order_payment",
+      "constrained_actions": [
+        "modify_pending_order_payment"
+      ]
+    }
+  },
+  "glm_mod_addr+mod_items+return": {
+    "precondition": "user_requested_modify_order_address & user_requested_modify_order_items & user_requested_return_order & agent_listed_action_details & user_confirmed_yes & user_confirmed_no",
+    "obligation": "true",
+    "obligation_type": "maintenance",
+    "reparative": null,
+    "metadata": {
+      "description": "Label precondition propositions for: modify_pending_order_address, modify_pending_order_items, return_delivered_order_items",
+      "constrained_actions": [
+        "modify_pending_order_address",
+        "modify_pending_order_items",
+        "return_delivered_order_items"
+      ]
+    }
+  }
+}
